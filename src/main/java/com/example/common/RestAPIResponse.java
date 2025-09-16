@@ -13,7 +13,7 @@ public class RestAPIResponse {
 	public Object data;
 	public int pagesize;
 	@Temporal(TemporalType.DATE)
-	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "dd-MM-yyyy", locale = "hi_IN", timezone = "IST")
+	@JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "MM-dd-yyyy", locale = "hi_IN", timezone = "IST")
 	private LocalDateTime timeStamp;
 
 	private RestAPIResponse() {

@@ -29,12 +29,14 @@ public class Invoice {
 	@Id
      @GeneratedValue(strategy = GenerationType.IDENTITY)
 	private long invoiceId;
+	private String invoiceNumber;
 	private LocalDate date;
 	private LocalDate dueDate;
 	private String customer;
 	
+	private String clientName;
 	@Column(precision = 15, scale = 2)
-    private BigDecimal amount;       
+    private BigDecimal totalAmount;       
 	
 	 private String status;     
      private String fileName; 

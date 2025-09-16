@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.example.common.RestAPIResponse;
 import com.example.entity.Invoice;
 import com.example.serviceImpl.InvoiceServiceImpl;
 
@@ -60,4 +61,24 @@ public class InvoiceController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
+    
+    @DeleteMapping("/{invoiceId}")
+    public ResponseEntity<RestAPIResponse> deleteInvoiceNumber(@PathVariable Long invoiceId){
+    	 try {
+             invoiceServiceImpl.deleteByInvoiceNumber(invoiceId);
+    		 RestAPIResponse response = new RestAPIResponse(  "success",  "Deleted Successfully" );
+    	        return ResponseEntity.ok(response);
+    	    } catch (Exception e) {
+    	        RestAPIResponse response = new RestAPIResponse( "error", "User Data is Not Deleted" );
+    	        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    	    }
+    }
 }
+
+
+
+
+
+
+
+

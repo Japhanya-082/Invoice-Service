@@ -7,5 +7,6 @@ import com.example.entity.Invoice;
 
 @Repository
 public interface InvoiceRepository extends JpaRepository<Invoice,  Long> {
-
+        boolean existsByInvoiceNumber(String invoiceNumber);
+        public void deleteByInvoiceNumber(String invoiceNumber);
 }

@@ -10,4 +10,6 @@ import com.example.exception.FileStorageException;
 public interface InvoiceService {
    public List<Invoice> uploadAndSaveInvoices(MultipartFile multipartFile) throws FileStorageException;
   public List<Invoice> getAll();
+  public void deleteByInvoiceNumber(Long invoiceId);
+  
 }
