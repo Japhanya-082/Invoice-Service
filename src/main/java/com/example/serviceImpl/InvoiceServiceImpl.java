@@ -106,6 +106,32 @@ public class InvoiceServiceImpl implements InvoiceService {
             throw new FileStorageException("Failed to process file", e);
         }
     }
+    
+    /** Extract Client Name from text (used internally by core parser) */
+    private String extractClientName(String text) {
+        String clientName = "Unknown";
+
+        // Regex pattern for Client Name variants
+        Pattern clientPattern = Pattern.compile("(?i)(client\\s*name\\s*:?|clientname\\s*:?|client\\s*:?)\\s*(.*)");
+        Matcher matcher = clientPattern.matcher(text);
+        if (matcher.find()) {
+            clientName = matcher.group(2).split("\\n")[0].trim();
+        } else {
+            // Fallback: line-by-line scan
+            for (String line : text.split("\\n")) {
+                String lower = line.toLowerCase();
+                if (lower.startsWith("client name") || lower.startsWith("clientname") || lower.startsWith("client")) {
+                    if (line.contains(":")) {
+                        clientName = line.split(":", 2)[1].trim();
+                    } else {
+                        clientName = line.trim();
+                    }
+                    break;
+                }
+            }
+        }
+        return clientName;
+    }
 
     /** Core parser for text-based extraction (works for CSV, Excel, DOCX, PDF, Image) */
     private List<Invoice> parseTextToInvoice(String text, String fileName) {
@@ -114,7 +140,9 @@ public class InvoiceServiceImpl implements InvoiceService {
         Pattern invoicePattern = Pattern.compile("Invoice Number[:\\s]*([\\w-]+)", Pattern.CASE_INSENSITIVE);
         Pattern clientPattern = Pattern.compile("Client Name[:\\s]*(.+)", Pattern.CASE_INSENSITIVE);
         Pattern customerPattern = Pattern.compile("Customer[:\\s]*(.+)", Pattern.CASE_INSENSITIVE);
-        Pattern totalPattern = Pattern.compile("Total Amount[:\\s]*([0-9.,]+)", Pattern.CASE_INSENSITIVE);
+        Pattern totalHoursPattern = Pattern.compile("Total Hours[:\\s]*(\\d+)", Pattern.CASE_INSENSITIVE);
+        Pattern totalAmountPattern = Pattern.compile("Total Amount[:\\s]*([0-9.,]+)", Pattern.CASE_INSENSITIVE);
+        Pattern weekPattern = Pattern.compile("Week[:\\s]*(.+)", Pattern.CASE_INSENSITIVE);
         Pattern datePattern = Pattern.compile("Date[:\\s]*(\\d{4}-\\d{2}-\\d{2}|\\d{2}/\\d{2}/\\d{4})", Pattern.CASE_INSENSITIVE);
         Pattern dueDatePattern = Pattern.compile("Due Date[:\\s]*(\\d{4}-\\d{2}-\\d{2}|\\d{2}/\\d{2}/\\d{4})", Pattern.CASE_INSENSITIVE);
         Pattern statusPattern = Pattern.compile("Status[:\\s]*(\\w+)", Pattern.CASE_INSENSITIVE);
@@ -123,23 +151,46 @@ public class InvoiceServiceImpl implements InvoiceService {
         invoice.setFileName(fileName);
 
         Matcher matcher = invoicePattern.matcher(text);
-        if (matcher.find()) invoice.setInvoiceNumber(matcher.group(1));
-        else invoice.setInvoiceNumber("INV-" + System.currentTimeMillis());
+        invoice.setInvoiceNumber(matcher.find() ? matcher.group(1) : "INV-" + System.currentTimeMillis());
 
-        matcher = clientPattern.matcher(text);
-        invoice.setClientName(matcher.find() ? matcher.group(1) : "Unknown");
+        // Client Name extraction (robust)
+        String clientName = extractClientName(text);
+        invoice.setClientName(clientName);
 
         matcher = customerPattern.matcher(text);
-        invoice.setCustomer(matcher.find() ? matcher.group(1) : null);
+        invoice.setCustomer(matcher.find() ? matcher.group(1).trim() : null);
 
-        matcher = totalPattern.matcher(text);
-        invoice.setTotalAmount(matcher.find() ? new BigDecimal(matcher.group(1).replaceAll(",", "")) : BigDecimal.ZERO);
+        // Total Hours → Amount (100 per hour)
+        matcher = totalHoursPattern.matcher(text);
+        int totalHours = matcher.find() ? Integer.parseInt(matcher.group(1)) : 0;
 
-        matcher = datePattern.matcher(text);
-        invoice.setDate(matcher.find() ? parseDateString(matcher.group(1)) : LocalDate.now());
+        matcher = totalAmountPattern.matcher(text);
+        BigDecimal totalAmount = matcher.find()
+                ? new BigDecimal(matcher.group(1).replaceAll(",", ""))
+                : BigDecimal.valueOf(totalHours * 100L);
+        invoice.setTotalAmount(totalAmount);
 
-        matcher = dueDatePattern.matcher(text);
-        invoice.setDueDate(matcher.find() ? parseDateString(matcher.group(1)) : invoice.getDate().plusDays(30));
+        // Week → start date & due date
+        matcher = weekPattern.matcher(text);
+        if (matcher.find()) {
+            try {
+                String weekStr = matcher.group(1).trim();
+                String[] dates = weekStr.split("to");
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy");
+                LocalDate startDate = LocalDate.parse(dates[0].trim() + " " + dates[1].trim().split(" ")[1], formatter);
+                invoice.setDate(startDate);
+                invoice.setDueDate(startDate.plusDays(30));
+            } catch (Exception e) {
+                invoice.setDate(LocalDate.now());
+                invoice.setDueDate(LocalDate.now().plusDays(30));
+            }
+        } else {
+            matcher = datePattern.matcher(text);
+            invoice.setDate(matcher.find() ? parseDateString(matcher.group(1)) : LocalDate.now());
+
+            matcher = dueDatePattern.matcher(text);
+            invoice.setDueDate(matcher.find() ? parseDateString(matcher.group(1)) : invoice.getDate().plusDays(30));
+        }
 
         matcher = statusPattern.matcher(text);
         invoice.setStatus(matcher.find() ? matcher.group(1) : "GENERATED");
@@ -165,12 +216,13 @@ public class InvoiceServiceImpl implements InvoiceService {
     private List<Invoice> parseCsvFile(Path path, String fileName) throws IOException {
         List<Invoice> invoices = new ArrayList<>();
         try (BufferedReader br = Files.newBufferedReader(path)) {
-            String line;
-            boolean isHeader = true;
-            while ((line = br.readLine()) != null) {
-                if (isHeader) { isHeader = false; continue; }
-                invoices.addAll(parseTextToInvoice(line, fileName));
-                break; // Only one invoice per file
+            String headerLine = br.readLine(); // First row is header
+            String dataLine = br.readLine();   // Next row contains data (assuming 1 invoice per file)
+
+            if (headerLine != null && dataLine != null) {
+                StringBuilder text = new StringBuilder();
+                text.append(headerLine).append("\n").append(dataLine);
+                invoices.addAll(parseTextToInvoice(text.toString(), fileName));
             }
         }
         return invoices;
@@ -179,9 +231,9 @@ public class InvoiceServiceImpl implements InvoiceService {
     /** Excel Parsing */
     private List<Invoice> parseExcelFile(Path path, String fileName) throws IOException {
         List<Invoice> invoices = new ArrayList<>();
-        try (Workbook workbook = fileName.toLowerCase().endsWith("xlsx") ? 
-             new XSSFWorkbook(Files.newInputStream(path)) : 
-             new HSSFWorkbook(Files.newInputStream(path))) {
+        try (Workbook workbook = fileName.toLowerCase().endsWith("xlsx") ?
+                new XSSFWorkbook(Files.newInputStream(path)) :
+                new HSSFWorkbook(Files.newInputStream(path))) {
 
             Sheet sheet = workbook.getSheetAt(0);
             StringBuilder text = new StringBuilder();
@@ -229,46 +281,8 @@ public class InvoiceServiceImpl implements InvoiceService {
         tesseract.setLanguage("eng");
 
         String text = tesseract.doOCR(file);
-        Invoice invoice = new Invoice();
-        invoice.setFileName(fileName);
-        invoice.setStatus("GENERATED");
-
-        // Auto-generate invoice number
-        invoice.setInvoiceNumber("INV-" + System.currentTimeMillis());
-
-        // Client name
-        invoice.setClientName(text.toLowerCase().contains("client name:") ?
-                text.split("(?i)client name:")[1].split("\\n")[0].trim() : "Unknown");
-
-        // Total Hours → totalAmount
-        int totalHours = 0;
-        if (text.toLowerCase().contains("total hours:")) {
-            try {
-                String hoursStr = text.split("(?i)total hours:")[1].split("hours")[0].trim();
-                totalHours = Integer.parseInt(hoursStr);
-            } catch (Exception ignored) {}
-        }
-        invoice.setTotalAmount(BigDecimal.valueOf(totalHours * 100L));
-
-        // Week → date & dueDate
-        if (text.toLowerCase().contains("week:")) {
-            try {
-                String weekStr = text.split("(?i)week:")[1].split("\\n")[0].trim();
-                String[] dates = weekStr.split("to");
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMM yyyy");
-                LocalDate startDate = LocalDate.parse(dates[0].trim() + " " + dates[1].trim().split(" ")[1], formatter);
-                invoice.setDate(startDate);
-                invoice.setDueDate(startDate.plusDays(30));
-            } catch (Exception e) {
-                invoice.setDate(LocalDate.now());
-                invoice.setDueDate(LocalDate.now().plusDays(30));
-            }
-        } else {
-            invoice.setDate(LocalDate.now());
-            invoice.setDueDate(LocalDate.now().plusDays(30));
-        }
-
-        return invoice;
+        List<Invoice> invoices = parseTextToInvoice(text, fileName);
+        return invoices.get(0); // Single invoice per image
     }
 
     private String getCellValueAsString(Cell cell) {
