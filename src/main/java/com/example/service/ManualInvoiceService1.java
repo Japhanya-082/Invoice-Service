@@ -42,7 +42,9 @@ public interface ManualInvoiceService1 {
 	Page<ManualInvoice> searchInvoices(String paramString, Pageable paramPageable);
 
 	public Map<String, Long> getInvoiceCounts();
-
+	
+	public void sendInvoiceMail(String invoiceNumber, Long adminId);
+	
 	public Long getTodayOverdueCount();
 
 	public List<ManualInvoice> getTodayOverdueInvoices();
@@ -56,10 +58,13 @@ public interface ManualInvoiceService1 {
 
 	//Bhargav 18-03-26
 	public List<ManualInvoice> getPendingInvoicesByAdmin(Long adminId);
+	
 	public Page<ManualInvoice> getPendingInvoicesByAdmin(InvoiceSortingRequestDTO requestDTO) ;
 
 	//Bhargav 18-03-26
 	public Page<ManualInvoice> getInvoicesByAdminAndVendorType(InvoiceSortingRequestDTO requestDTO);
+
+	public void sendInvoiceMails(String invoiceNumber, Long adminId);
 	
 	
 

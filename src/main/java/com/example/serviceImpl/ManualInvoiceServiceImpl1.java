@@ -902,4 +902,28 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 	            pageable
 	    );
 	}
+
+	@Override
+	public void sendInvoiceMails(String invoiceNumber, Long adminId) {
+
+	    ManualInvoice invoice = invoiceRepository
+	            .findByInvoiceNumberAndAdminId(invoiceNumber, adminId)
+	            .orElseThrow(() -> new RuntimeException("Invoice not found or unauthorized access"));
+
+	    ConsultantDTO consultant = consultantFeignClient.getConsultant(invoice.getConsultantId());
+
+	    String email = consultant.getInvoiceMail();
+
+	    // ✅ Send mail
+	    invoiceEmailService.sendInvoiceMail(email, invoice);
+
+	    // ✅ Update status AFTER successful mail
+	    invoice.setStatus("Pending");
+
+	    // ✅ Save updated invoice
+	    invoiceRepository.save(invoice);
+	}
+
+	
+	
 }

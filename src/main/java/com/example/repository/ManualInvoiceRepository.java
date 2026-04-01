@@ -142,18 +142,28 @@ public interface ManualInvoiceRepository
 	List<ManualInvoice> findByAdminId(Long adminId);
 
 	@Query("""
-			SELECT i FROM ManualInvoice i
-			WHERE i.adminId = :adminId
-			AND (
-			     :keyword IS NULL
-			     OR LOWER(i.customer) LIKE :keyword
-			     OR LOWER(i.poNumber) LIKE :keyword
-			     OR LOWER(i.invoiceNumber) LIKE :keyword
-			)
-			""")
-	Page<ManualInvoice> searchInvoices(@Param("keyword") String keyword, @Param("adminId") Long adminId,
-			Pageable pageable);
-
+		    SELECT i FROM ManualInvoice i
+		    WHERE i.adminId = :adminId
+		    AND (
+		         :keyword IS NULL
+		         OR LOWER(i.customer) LIKE LOWER(CONCAT('%', :keyword, '%'))
+		         OR LOWER(i.poNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))
+		         OR LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))
+		         OR LOWER(i.consultantName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+		         OR CAST(i.totalHours AS string) LIKE CONCAT('%', :keyword, '%')
+		         OR CAST(i.dueDate AS string) LIKE CONCAT('%', :keyword, '%')
+		         OR CAST(i.invoiceDate AS string) LIKE CONCAT('%', :keyword, '%')
+		         OR CAST(i.dueAmount AS string) LIKE CONCAT('%', :keyword, '%')
+		         OR CAST(i.paymentAmount AS string) LIKE CONCAT('%', :keyword, '%')
+		         OR CAST(i.createdAt AS string) LIKE CONCAT('%', :keyword, '%')
+		         OR LOWER(i.status) LIKE LOWER(CONCAT('%', :keyword, '%'))
+		    )
+		""")
+		Page<ManualInvoice> searchInvoices(
+		        @Param("keyword") String keyword,
+		        @Param("adminId") Long adminId,
+		        Pageable pageable
+		);
 	Optional<ManualInvoice> findByInvoiceNumberAndAdminId(String invoiceNumber, Long adminId);
 
 	// Bhargav 20-03-26 
@@ -209,4 +219,5 @@ public interface ManualInvoiceRepository
 	        Pageable pageable
 	);
 	
+
 }
