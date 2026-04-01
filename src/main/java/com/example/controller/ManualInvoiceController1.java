@@ -481,4 +481,14 @@ public class ManualInvoiceController1 {
 	    );
 	}
 	
+	
+	@PostMapping("/send-mails/{invoiceNumber}")
+	public ResponseEntity<RestAPIResponse> sendInvoiceMails(@PathVariable String invoiceNumber,
+			@RequestParam Long adminId) {
+
+		serviceImpl1.sendInvoiceMails(invoiceNumber, adminId);
+
+		return ResponseEntity.ok(new RestAPIResponse("success", "Invoice mail sent successfully", null));
+	}
+	
 }
