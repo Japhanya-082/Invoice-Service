@@ -142,6 +142,7 @@ public interface ManualInvoiceRepository
 	List<ManualInvoice> findByAdminId(Long adminId);
 
 	@Query("SELECT mi FROM ManualInvoice mi WHERE mi.adminId = :adminId AND " +
+		       "LOWER(mi.status) = 'draft' AND " +  
 		       "(:keyword = '' OR " +
 		       "LOWER(mi.customer) LIKE :keyword OR " +
 		       "LOWER(mi.poNumber) LIKE :keyword OR " +
@@ -212,6 +213,21 @@ public interface ManualInvoiceRepository
 	        String vendorType,
 	        Pageable pageable
 	);
-	
 
+	@Query("""
+		    SELECT i FROM ManualInvoice i
+		    WHERE i.adminId = :adminId
+		    AND LOWER(i.vendorType) = LOWER(:vendorType)
+		    AND (
+		        LOWER(i.consultantName) LIKE %:search%
+		        OR LOWER(i.customer) LIKE %:search%
+		        OR LOWER(i.invoiceNumber) LIKE %:search%
+		    )
+		""")
+		Page<ManualInvoice> searchInvoiceByAdminAndVendorType(
+		        Long adminId,
+		        String vendorType,
+		        String search,
+		        Pageable pageable
+		);
 }
