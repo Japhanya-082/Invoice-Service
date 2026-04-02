@@ -481,14 +481,43 @@ public class ManualInvoiceController1 {
 	    );
 	}
 	
-	
 	@PostMapping("/send-mails/{invoiceNumber}")
-	public ResponseEntity<RestAPIResponse> sendInvoiceMails(@PathVariable String invoiceNumber,
-			@RequestParam Long adminId) {
+	public ResponseEntity<RestAPIResponse> sendInvoiceMails(
+	        @PathVariable String invoiceNumber,
+	        @RequestParam Long adminId) {
 
-		serviceImpl1.sendInvoiceMails(invoiceNumber, adminId);
+	    try {
+	        serviceImpl1.sendInvoiceMails(invoiceNumber, adminId);
 
-		return ResponseEntity.ok(new RestAPIResponse("success", "Invoice mail sent successfully", null));
+	        return ResponseEntity.ok(
+	                new RestAPIResponse("success", "Invoice mail sent successfully", null)
+	        );
+
+	    } catch (RuntimeException e) {
+
+	        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+	                .body(new RestAPIResponse("fail", e.getMessage(), null));
+	    }
 	}
+	
+	
+
+	@PostMapping("/vendortype-receivable/searchAndSorting")
+	public ResponseEntity<RestAPIResponse> getInvoiceByAdminAndVendorType(
+	        @RequestBody InvoiceSortingRequestDTO requestDTO) {
+
+	    Page<ManualInvoice> invoices =
+	            serviceImpl1.getInvoiceByAdminAndVendorType(requestDTO);
+
+	    return ResponseEntity.ok(
+	            new RestAPIResponse(
+	                    "Success",
+	                    "Invoices fetched successfully",
+	                    invoices.getContent()
+	            )
+	    );
+	}
+	
+	
 	
 }

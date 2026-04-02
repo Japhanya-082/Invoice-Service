@@ -31,63 +31,95 @@ public class InvoiceEmailService {
 			helper.setTo(toMail);
 			helper.setSubject("Invoice Generated - " + invoice.getInvoiceNumber());
 
-			String body = "<html>"
-					+ "<body style='margin:0;padding:0;background:#f0f4f8;font-family:Arial,sans-serif;'>" +
+			String body =
+					"<html>" +
+					"<body style='margin:0;padding:0;background:#f0f4f8;font-family:Arial,sans-serif;'>" +
 
-					"<table width='100%' cellpadding='0' cellspacing='0'>" + "<tr><td align='center'>" +
+					"<table width='100%' cellpadding='0' cellspacing='0' bgcolor='#f0f4f8'>" +
+					"<tr><td align='center'>" +
 
-					"<table width='620' cellpadding='0' cellspacing='0' style='background:#ffffff;margin-top:40px;border-radius:10px;overflow:hidden;box-shadow:0 6px 20px rgba(0,0,0,0.15);'>"
-					+
+					"<table width='600' cellpadding='0' cellspacing='0' bgcolor='#ffffff' style='margin-top:20px;border:1px solid #ddd;'>" +
 
-					"<tr>"
-					+ "<td style='background:linear-gradient(90deg,#6a11cb,#2575fc);padding:30px;text-align:center;color:white;'>"
-					+ "<h1 style='margin:0;'>Narvee</h1>" + "<p style='margin-top:5px;'>Invoice Notification</p>"
-					+ "</td>" + "</tr>" +
+					/* ================= HEADER ================= */
+					"<tr>" +
+					"<td bgcolor='#2575fc' style='padding:20px;text-align:center;color:#ffffff;'>" +
+					"<h2 style='margin:0;'>Narvee</h2>" +
+					"<p style='margin:5px 0 0;'>Invoice Notification</p>" +
+					"</td>" +
+					"</tr>" +
 
-					"<tr>" + "<td style='padding:30px;color:#333;font-size:15px;'>" +
+					/* ================= BODY ================= */
+					"<tr>" +
+					"<td style='padding:20px;color:#333;font-size:14px;'>" +
 
-					"<p>Hello <b style='color:#2575fc'>" + invoice.getCustomer() + "</b>,</p>" +
-
+					"<p>Hello <b>" + invoice.getCustomer() + "</b>,</p>" +
 					"<p>Your invoice has been generated successfully.</p>" +
 
-					"<table width='100%' cellpadding='12' style='border-collapse:collapse;margin-top:20px;font-size:14px'>"
-					+
+					"<table width='100%' cellpadding='10' cellspacing='0' border='1' style='border-collapse:collapse;font-size:13px;'>" +
 
-					"<tr style='background:#f5f7fa'>" + "<td><b>Invoice Number</b></td>" + "<td>"
-					+ invoice.getInvoiceNumber() + "</td>" + "</tr>" +
+					"<tr bgcolor='#f2f2f2'>" +
+					"<td><b>Invoice Number</b></td>" +
+					"<td>" + invoice.getInvoiceNumber() + "</td>" +
+					"</tr>" +
 
-					"<tr>" + "<td><b>Invoice Date</b></td>" + "<td>" + invoice.getInvoiceDate() + "</td>" + "</tr>" +
+					"<tr>" +
+					"<td><b>Invoice Date</b></td>" +
+					"<td>" + invoice.getInvoiceDate() + "</td>" +
+					"</tr>" +
 
-					"<tr style='background:#f5f7fa'>" + "<td><b>Due Date</b></td>" + "<td>" + invoice.getDueDate()
-					+ "</td>" + "</tr>" +
+					"<tr bgcolor='#f2f2f2'>" +
+					"<td><b>Due Date</b></td>" +
+					"<td>" + invoice.getDueDate() + "</td>" +
+					"</tr>" +
 
-					"<tr>" + "<td><b>Consultant</b></td>" + "<td>" + invoice.getConsultantName() + "</td>" + "</tr>" +
+					"<tr>" +
+					"<td><b>Consultant</b></td>" +
+					"<td>" + invoice.getConsultantName() + "</td>" +
+					"</tr>" +
 
-					"<tr style='background:#f5f7fa'>" + "<td><b>Total Amount</b></td>"
-					+ "<td style='color:#27ae60;font-weight:bold'>" + invoice.getTotal() + " " + invoice.getCurrency()
-					+ "</td>" + "</tr>" +
+					"<tr bgcolor='#f2f2f2'>" +
+					"<td><b>Total Amount</b></td>" +
+					"<td style='color:#27ae60;font-weight:bold;'>" +
+					invoice.getTotal() + " " + invoice.getCurrency() +
+					"</td>" +
+					"</tr>" +
 
-					"<tr>" + "<td><b>Amount Due</b></td>" + "<td style='color:#e74c3c;font-weight:bold'>"
-					+ invoice.getAmountDue() + "</td>" + "</tr>" +
+					"<tr>" +
+					"<td><b>Amount Due</b></td>" +
+					"<td style='color:#e74c3c;font-weight:bold;'>" +
+					invoice.getAmountDue() +
+					"</td>" +
+					"</tr>" +
 
 					"</table>" +
 
-					"<div style='margin-top:30px;text-align:center'>"
-					+ "<a href='#' style='background:#2575fc;color:white;padding:12px 25px;text-decoration:none;border-radius:5px;font-weight:bold'>View Invoice</a>"
-					+ "</div>" +
+					/* ================= BUTTON ================= */
+//					"<p style='margin-top:20px;text-align:center;'>" +
+//					"<a href='#' style='background:#2575fc;color:#ffffff;padding:10px 20px;text-decoration:none;font-weight:bold;'>View Invoice</a>" +
+//					"</p>" +
 
-					"<p style='margin-top:30px'>Regards,<br><b>Narvee Team</b></p>" +
+	//				"<p>Regards,<br><b>Narvee Team</b></p>" +
 
-					"</td>" + "</tr>" +
+	//				"</td>" +
+		//			"</tr>" +
 
-					"<tr>" + "<td style='background:#2c3e50;color:white;text-align:center;padding:15px;font-size:12px'>"
-					+ "© 2026 Narvee ATS • All Rights Reserved<br>" + "no-reply@narvee.com" + "</td>" + "</tr>" +
+					/* ================= FOOTER (UPDATED DARK MODERN) ================= */
+					"<tr>" +
+					"<td bgcolor='#4a6fa5' style='text-align:center;padding:10px;font-size:10px;color:#ffffff;'>" +
+
+					"<b>Narvee ATS</b><br>" +
+					"<span style='font-size:11px;color:#cfd8dc;'>© 2026 All Rights Reserved</span><br><br>" +
+
+					"<a href='mailto:no-reply@narvee.com' style='color:#4fc3f7;text-decoration:none;'>no-reply@narvee.com</a>" +
+
+					"</td>" +
+					"</tr>" +
 
 					"</table>" +
 
 					"</td></tr></table>" +
 
-					"</body>" + "</html>";
+					"</body></html>";
 			helper.setText(body, true);
 
 			mailSender.send(message);
