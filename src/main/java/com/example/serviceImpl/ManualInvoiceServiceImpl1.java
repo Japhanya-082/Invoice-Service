@@ -720,32 +720,39 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 	// vasim/03/03
 	@Override
 	public Page<ManualInvoice> getAllInvoicesWithPaginationAndSearch(int page, int size, String sortField,
-			String sortDir, String keyword, Long adminId) {
+	        String sortDir, String keyword, Long adminId) {
 
-		if (!"asc".equalsIgnoreCase(sortDir) && !"desc".equalsIgnoreCase(sortDir)) {
-			sortDir = "asc";
-		}
+	    // ✅ Validate sort direction
+	    if (!"asc".equalsIgnoreCase(sortDir) && !"desc".equalsIgnoreCase(sortDir)) {
+	        sortDir = "asc";
+	    }
 
-		if (sortField == null || sortField.isBlank()) {
-			sortField = "createdAt";
-		}
+	    // ✅ Default sort field
+	    if (sortField == null || sortField.isBlank()) {
+	        sortField = "createdAt";
+	    }
 
-		Sort sort = "desc".equalsIgnoreCase(sortDir) ? Sort.by(sortField).descending() : Sort.by(sortField).ascending();
+	    // ✅ Sorting
+	    Sort sort = "desc".equalsIgnoreCase(sortDir)
+	            ? Sort.by(sortField).descending()
+	            : Sort.by(sortField).ascending();
 
-		Pageable pageable = PageRequest.of(page, size, sort);
+	    Pageable pageable = PageRequest.of(page, size, sort);
 
-		if (keyword == null || keyword.trim().isEmpty()) {
-			keyword = null;
-		} else {
-			keyword = "%" + keyword.trim().toLowerCase() + "%";
-		}
+	    // ✅ FIX: Avoid NULL (PostgreSQL issue)
+	    if (keyword == null || keyword.trim().isEmpty()) {
+	        keyword = "";   // 🔥 IMPORTANT FIX
+	    } else {
+	        keyword = "%" + keyword.trim().toLowerCase() + "%";
+	    }
 
-		// 🔐 ADMIN FILTER ADDED
-		Page<ManualInvoice> invoicePage = invoiceRepository.searchInvoices(keyword, adminId, pageable);
+	    // 🔐 ADMIN FILTER
+	    Page<ManualInvoice> invoicePage = invoiceRepository.searchInvoices(keyword, adminId, pageable);
 
-		invoicePage.getContent().forEach(this::enrichFromVendorService);
+	    // ✅ Enrich data
+	    invoicePage.getContent().forEach(this::enrichFromVendorService);
 
-		return invoicePage;
+	    return invoicePage;
 	}
 
 	public void sendInvoiceMail(String invoiceNumber, Long adminId) {

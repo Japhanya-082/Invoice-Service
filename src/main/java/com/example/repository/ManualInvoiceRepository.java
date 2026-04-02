@@ -141,29 +141,23 @@ public interface ManualInvoiceRepository
 
 	List<ManualInvoice> findByAdminId(Long adminId);
 
-	@Query("""
-		    SELECT i FROM ManualInvoice i
-		    WHERE i.adminId = :adminId
-		    AND (
-		         :keyword IS NULL
-		         OR LOWER(i.customer) LIKE LOWER(CONCAT('%', :keyword, '%'))
-		         OR LOWER(i.poNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))
-		         OR LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :keyword, '%'))
-		         OR LOWER(i.consultantName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-		         OR CAST(i.totalHours AS string) LIKE CONCAT('%', :keyword, '%')
-		         OR CAST(i.dueDate AS string) LIKE CONCAT('%', :keyword, '%')
-		         OR CAST(i.invoiceDate AS string) LIKE CONCAT('%', :keyword, '%')
-		         OR CAST(i.dueAmount AS string) LIKE CONCAT('%', :keyword, '%')
-		         OR CAST(i.paymentAmount AS string) LIKE CONCAT('%', :keyword, '%')
-		         OR CAST(i.createdAt AS string) LIKE CONCAT('%', :keyword, '%')
-		         OR LOWER(i.status) LIKE LOWER(CONCAT('%', :keyword, '%'))
-		    )
-		""")
-		Page<ManualInvoice> searchInvoices(
-		        @Param("keyword") String keyword,
-		        @Param("adminId") Long adminId,
-		        Pageable pageable
-		);
+	@Query("SELECT mi FROM ManualInvoice mi WHERE mi.adminId = :adminId AND " +
+		       "(:keyword = '' OR " +
+		       "LOWER(mi.customer) LIKE :keyword OR " +
+		       "LOWER(mi.poNumber) LIKE :keyword OR " +
+		       "LOWER(mi.invoiceNumber) LIKE :keyword OR " +
+		       "LOWER(mi.consultantName) LIKE :keyword OR " +
+		       "CAST(mi.totalHours AS string) LIKE :keyword OR " +
+		       "CAST(mi.dueDate AS string) LIKE :keyword OR " +
+		       "CAST(mi.invoiceDate AS string) LIKE :keyword OR " +
+		       "CAST(mi.dueAmount AS string) LIKE :keyword OR " +
+		       "CAST(mi.paymentAmount AS string) LIKE :keyword OR " +
+		       "CAST(mi.createdAt AS string) LIKE :keyword OR " +
+		       "LOWER(mi.status) LIKE :keyword)")
+		Page<ManualInvoice> searchInvoices(@Param("keyword") String keyword,
+		                                   @Param("adminId") Long adminId,
+		                                   Pageable pageable);
+	
 	Optional<ManualInvoice> findByInvoiceNumberAndAdminId(String invoiceNumber, Long adminId);
 
 	// Bhargav 20-03-26 
