@@ -107,7 +107,6 @@ public class InvoiceEmailService {
 					"<tr>" +
 					"<td bgcolor='#4a6fa5' style='text-align:center;padding:10px;font-size:10px;color:#ffffff;'>" +
 
-					"<b>Narvee ATS</b><br>" +
 					"<span style='font-size:11px;color:#cfd8dc;'>© 2026 All Rights Reserved</span><br><br>" +
 
 					"<a href='mailto:no-reply@narvee.com' style='color:#4fc3f7;text-decoration:none;'>no-reply@narvee.com</a>" +
