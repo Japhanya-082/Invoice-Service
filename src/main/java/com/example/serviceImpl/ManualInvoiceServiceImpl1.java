@@ -1182,16 +1182,6 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		        );
 		    }
 
-		    // ✅ CASE 3: search only
-		    if (hasSearch) {
-		        return invoiceRepository.searchInvoiceByAdminAndVendorType(
-		                adminId,
-		                vendorType,
-		                search.toLowerCase(),
-		                pageable
-		        );
-		    }
-
 		    // ✅ CASE 4: BOTH EMPTY → RETURN ALL RECEIVABLE DATA 🔥
 		    return invoiceRepository.findByAdminIdAndVendorTypeIgnoreCase(
 		            adminId,
@@ -1260,15 +1250,6 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 	                adminId,
 	                vendorType.toLowerCase().trim(),
 	                status.toLowerCase().trim(),
-	                search.toLowerCase().trim(),
-	                pageable
-	        );
-	    }
-
-	    if (hasSearch) {
-	        return invoiceRepository.searchInvoicesByAdminAndVendorType(
-	                adminId,
-	                vendorType.toLowerCase().trim(),
 	                search.toLowerCase().trim(),
 	                pageable
 	        );
