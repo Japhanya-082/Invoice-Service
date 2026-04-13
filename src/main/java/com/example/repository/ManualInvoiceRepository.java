@@ -230,4 +230,105 @@ public interface ManualInvoiceRepository
 		        String search,
 		        Pageable pageable
 		);
+	
+	
+	   // ✅ CASE 1: ALL DATA (adminId only)
+    Page<ManualInvoice> findByAdminId(
+            Long adminId,
+            Pageable pageable
+    );
+
+    // ✅ CASE 2: vendorType + status + search
+    @Query("""
+        SELECT i FROM ManualInvoice i
+        WHERE i.adminId = :adminId
+        AND LOWER(i.vendorType) = LOWER(:vendorType)
+        AND LOWER(i.status) = LOWER(:status)
+        AND (
+            LOWER(i.consultantName) LIKE LOWER(CONCAT('%', :search, '%'))
+            OR LOWER(i.customer) LIKE LOWER(CONCAT('%', :search, '%'))
+            OR LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+        )
+    """)
+    Page<ManualInvoice> searchInvoicesByAdminVendorTypeAndStatus(
+            Long adminId,
+            String vendorType,
+            String status,
+            String search,
+            Pageable pageable
+    );
+
+    // ✅ CASE 3: vendorType + status
+    Page<ManualInvoice> findByAdminIdAndVendorTypeAndStatusIgnoreCase(
+            Long adminId,
+            String vendorType,
+            String status,
+            Pageable pageable
+    );
+
+//    // ✅ CASE 4: vendorType only
+//    Page<ManualInvoice> findByAdminIdAndVendorTypeIgnoreCase(
+//            Long adminId,
+//            String vendorType,
+//            Pageable pageable
+//    );
+
+    // ✅ CASE 5: status only
+    Page<ManualInvoice> findByAdminIdAndStatusIgnoreCase(
+            Long adminId,
+            String status,
+            Pageable pageable
+    );
+
+    // ✅ CASE 6: search only
+    @Query("""
+        SELECT i FROM ManualInvoice i
+        WHERE i.adminId = :adminId
+        AND (
+            LOWER(i.consultantName) LIKE LOWER(CONCAT('%', :search, '%'))
+            OR LOWER(i.customer) LIKE LOWER(CONCAT('%', :search, '%'))
+            OR LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+        )
+    """)
+    Page<ManualInvoice> searchInvoicesByAdminOnly(
+            Long adminId,
+            String search,
+            Pageable pageable
+    );
+
+    
+    @Query("""
+    	    SELECT i FROM ManualInvoice i
+    	    WHERE i.adminId = :adminId
+    	    AND LOWER(i.vendorType) = LOWER(:vendorType)
+    	    AND LOWER(i.status) = LOWER(:status)
+    	    AND (
+    	        LOWER(i.consultantName) LIKE LOWER(CONCAT('%', :search, '%'))
+    	        OR LOWER(i.customer) LIKE LOWER(CONCAT('%', :search, '%'))
+    	        OR LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))
+    	    )
+    	""")
+    	Page<ManualInvoice> searchReceivableByStatusAndSearch(
+    	        Long adminId,
+    	        String vendorType,
+    	        String status,
+    	        String search,
+    	        Pageable pageable
+    	);
+    
+    
+    @Query("""
+    	    SELECT i FROM ManualInvoice i
+    	    WHERE i.adminId = :adminId
+    	    AND LOWER(i.vendorType) = LOWER(:vendorType)
+    	    AND LOWER(i.status) = LOWER(:status)
+    	""")
+    	Page<ManualInvoice> findReceivableByStatus(
+    	        Long adminId,
+    	        String vendorType,
+    	        String status,
+    	        Pageable pageable
+    	);
+    
+    
 }

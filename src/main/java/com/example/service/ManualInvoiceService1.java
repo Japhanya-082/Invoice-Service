@@ -67,6 +67,13 @@ public interface ManualInvoiceService1 {
 	public void sendInvoiceMails(String invoiceNumber, Long adminId);
 
 	public Page<ManualInvoice> getInvoiceByAdminAndVendorType(InvoiceSortingRequestDTO requestDTO);
+
+	public Page<ManualInvoice> getInvoicesByAdminAndVendorTypestatus(InvoiceSortingRequestDTO requestDTO);
+	
+	public Page<ManualInvoice> getInvoiceByAdminAndVendorTypereceivablestatus(InvoiceSortingRequestDTO requestDTO);
+	
+	public Page<ManualInvoice> getInvoicesByAdminAndVendorTypestatusinvoicestatus(InvoiceSortingRequestDTO requestDTO) ;
+
 	
 
 }
