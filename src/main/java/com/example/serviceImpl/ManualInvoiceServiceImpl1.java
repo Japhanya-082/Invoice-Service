@@ -10,6 +10,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -754,21 +755,45 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	    return invoicePage;
 	}
-
+	
+//11-04-26
+//	public void sendInvoiceMail(String invoiceNumber, Long adminId) {
+//
+//		System.out.println("Sending invoice mail to: " + invoiceNumber);
+//
+//		ManualInvoice invoice = invoiceRepository.findByInvoiceNumberAndAdminId(invoiceNumber, adminId)
+//				.orElseThrow(() -> new RuntimeException("Invoice not found or unauthorized access"));
+//
+//		ConsultantDTO consultant = consultantFeignClient.getConsultant(invoice.getConsultantId());
+//
+//		String email = consultant.getInvoiceMail();
+//
+//		invoiceEmailService.sendInvoiceMail(email, invoice);
+//	}
+	
 	public void sendInvoiceMail(String invoiceNumber, Long adminId) {
 
-		System.out.println("Sending invoice mail to: " + invoiceNumber);
+	    System.out.println("Sending invoice mail to: " + invoiceNumber);
 
-		ManualInvoice invoice = invoiceRepository.findByInvoiceNumberAndAdminId(invoiceNumber, adminId)
-				.orElseThrow(() -> new RuntimeException("Invoice not found or unauthorized access"));
+	    ManualInvoice invoice = invoiceRepository
+	            .findByInvoiceNumberAndAdminId(invoiceNumber, adminId)
+	            .orElseThrow(() -> new RuntimeException("Invoice not found or unauthorized access"));
 
-		ConsultantDTO consultant = consultantFeignClient.getConsultant(invoice.getConsultantId());
+	    ConsultantDTO consultant = consultantFeignClient.getConsultant(invoice.getConsultantId());
 
-		String email = consultant.getInvoiceMail();
+	    String email = consultant.getInvoiceMail();
 
-		invoiceEmailService.sendInvoiceMail(email, invoice);
+	    // ✅ Convert String → List
+	    List<String> emails = Arrays.stream(email.split(","))
+	            .map(String::trim)
+	            .filter(e -> !e.isEmpty())
+	            .toList();
+
+	    // ✅ Now correct
+	    invoiceEmailService.sendInvoiceMail(emails, invoice);
 	}
-
+	
+	
 	// Bhargav 17-03-26
 	@Override
 	public List<ManualInvoice> getInvoicesByConsultantId(Long consultantId) {
@@ -918,23 +943,28 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 	                .findByInvoiceNumberAndAdminId(invoiceNumber, adminId)
 	                .orElseThrow(() -> new RuntimeException("Invoice not found or unauthorized access"));
 
-	        // 🔴 Feign call (this is failing)
-	        ConsultantDTO consultant = consultantFeignClient.getConsultant(invoice.getConsultantId());
+	        String emailsString = invoice.getCustomerEmail();
 
-	        String email = consultant.getInvoiceMail();
+	        if (emailsString == null || emailsString.trim().isEmpty()) {
+	            throw new RuntimeException("No email addresses found");
+	        }
+
+	        // ✅ Convert comma-separated string → List
+	        List<String> emails = Arrays.stream(emailsString.split(","))
+	                .map(String::trim) // remove spaces
+	                .filter(email -> !email.isEmpty())
+	                .toList();
+
+	        if (emails.isEmpty()) {
+	            throw new RuntimeException("No valid email addresses found");
+	        }
 
 	        // ✅ Send mail
-	        invoiceEmailService.sendInvoiceMail(email, invoice);
+	        invoiceEmailService.sendInvoiceMail(emails, invoice);
 
 	        // ✅ Update status
 	        invoice.setStatus("Pending");
 	        invoiceRepository.save(invoice);
-
-	    } catch (feign.FeignException.Unauthorized e) {
-	        throw new RuntimeException("Consultant service token expired or invalid. Please login again.");
-
-	    } catch (feign.FeignException e) {
-	        throw new RuntimeException("Error while calling Consultant Service: " + e.getMessage());
 
 	    } catch (Exception e) {
 	        throw new RuntimeException("Failed to send invoice mail: " + e.getMessage());
@@ -1011,5 +1041,258 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 	            pageable
 	    );
 	}
+	
+	
+	
+
+	@Override
+	public Page<ManualInvoice> getInvoicesByAdminAndVendorTypestatus(
+	        InvoiceSortingRequestDTO requestDTO) {
+
+	    String search = requestDTO.getSearch();
+	    String sortBy = requestDTO.getSortField();
+	    String sortDir = requestDTO.getSortOrder();
+	    Integer pageNo = requestDTO.getPageNumber();
+	    Integer pageSize = requestDTO.getPageSize();
+	    Long adminId = requestDTO.getAdminId();
+
+	    // ✅ FIX: treat empty as null
+	    String vendorType = (requestDTO.getVendorType() != null && !requestDTO.getVendorType().trim().isEmpty())
+	            ? requestDTO.getVendorType().trim()
+	            : null;
+
+	    String status = (requestDTO.getStatus() != null && !requestDTO.getStatus().trim().isEmpty())
+	            ? requestDTO.getStatus().trim()
+	            : null;
+
+	    // ✅ Pagination
+	    if (pageNo == null || pageNo < 0) pageNo = 0;
+	    int zeroBasedPageNo = (pageNo > 0) ? pageNo - 1 : pageNo;
+
+	    if (pageSize == null || pageSize <= 0) pageSize = 10;
+
+	    // ✅ Sorting
+	    if (sortBy == null || sortBy.trim().isEmpty()) sortBy = "invoiceDate";
+	    if (sortDir == null || sortDir.trim().isEmpty()) sortDir = "desc";
+
+	    Sort.Direction direction = sortDir.equalsIgnoreCase("desc")
+	            ? Sort.Direction.DESC
+	            : Sort.Direction.ASC;
+
+	    Pageable pageable = PageRequest.of(zeroBasedPageNo, pageSize, Sort.by(direction, sortBy));
+
+	    boolean hasSearch = search != null && !search.trim().isEmpty();
+	    boolean hasVendorType = vendorType != null;
+	    boolean hasStatus = status != null;
+
+	    // ✅ CASE 1: ALL EMPTY → return ALL data
+	    if (!hasVendorType && !hasStatus && !hasSearch) {
+	        return invoiceRepository.findByAdminId(adminId, pageable);
+	    }
+
+	    // ✅ CASE 2: vendorType + status + search
+	    if (hasVendorType && hasStatus && hasSearch) {
+	        return invoiceRepository.searchInvoicesByAdminVendorTypeAndStatus(
+	                adminId, vendorType.toLowerCase(), status.toLowerCase(),
+	                search.toLowerCase(), pageable);
+	    }
+
+	    // ✅ CASE 3: vendorType + status
+	    if (hasVendorType && hasStatus) {
+	        return invoiceRepository.findByAdminIdAndVendorTypeAndStatusIgnoreCase(
+	                adminId, vendorType, status, pageable);
+	    }
+
+	    // ✅ CASE 4: vendorType only
+	    if (hasVendorType) {
+	        return invoiceRepository.findByAdminIdAndVendorTypeIgnoreCase(
+	                adminId, vendorType, pageable);
+	    }
+
+	    // ✅ CASE 5: status only
+	    if (hasStatus) {
+	        return invoiceRepository.findByAdminIdAndStatusIgnoreCase(
+	                adminId, status, pageable);
+	    }
+
+	    // ✅ CASE 6: search only
+	    if (hasSearch) {
+	        return invoiceRepository.searchInvoicesByAdminOnly(
+	                adminId, search.toLowerCase(), pageable);
+	    }
+
+	    return invoiceRepository.findByAdminId(adminId, pageable);
+	}
+
+	
+	@Override
+	public Page<ManualInvoice> getInvoiceByAdminAndVendorTypereceivablestatus(InvoiceSortingRequestDTO requestDTO) {
+		    String search = requestDTO.getSearch();
+		    String sortBy = requestDTO.getSortField();
+		    String sortDir = requestDTO.getSortOrder();
+		    Integer pageNo = requestDTO.getPageNumber();
+		    Integer pageSize = requestDTO.getPageSize();
+		    Long adminId = requestDTO.getAdminId();
+
+		    // ✅ ALWAYS RECEIVABLE
+		    String vendorType = "Receivable";
+
+		    // ✅ FIX: treat empty status as null
+		    String status = (requestDTO.getStatus() != null && !requestDTO.getStatus().trim().isEmpty())
+		            ? requestDTO.getStatus().trim()
+		            : null;
+
+		    // ✅ Pagination
+		    if (pageNo == null || pageNo < 0) pageNo = 0;
+		    int zeroBasedPageNo = (pageNo > 0) ? pageNo - 1 : pageNo;
+
+		    if (pageSize == null || pageSize <= 0) pageSize = 10;
+
+		    // ✅ Sorting
+		    if (sortBy == null || sortBy.trim().isEmpty()) sortBy = "invoiceDate";
+		    if (sortDir == null || sortDir.trim().isEmpty()) sortDir = "desc";
+
+		    Sort.Direction direction = sortDir.equalsIgnoreCase("desc")
+		            ? Sort.Direction.DESC
+		            : Sort.Direction.ASC;
+
+		    Pageable pageable = PageRequest.of(zeroBasedPageNo, pageSize, Sort.by(direction, sortBy));
+
+		    boolean hasSearch = search != null && !search.trim().isEmpty();
+		    boolean hasStatus = status != null;
+
+		    // ✅ CASE 1: status + search
+		    if (hasStatus && hasSearch) {
+		        return invoiceRepository.searchReceivableByStatusAndSearch(
+		                adminId,
+		                vendorType,
+		                status,
+		                search.toLowerCase(),
+		                pageable
+		        );
+		    }
+
+		    // ✅ CASE 2: status only
+		    if (hasStatus) {
+		        return invoiceRepository.findReceivableByStatus(
+		                adminId,
+		                vendorType,
+		                status,
+		                pageable
+		        );
+		    }
+
+		    // ✅ CASE 3: search only
+		    if (hasSearch) {
+		        return invoiceRepository.searchInvoiceByAdminAndVendorType(
+		                adminId,
+		                vendorType,
+		                search.toLowerCase(),
+		                pageable
+		        );
+		    }
+
+		    // ✅ CASE 4: BOTH EMPTY → RETURN ALL RECEIVABLE DATA 🔥
+		    return invoiceRepository.findByAdminIdAndVendorTypeIgnoreCase(
+		            adminId,
+		            vendorType,
+		            pageable
+		    );
+		}
+	
+	
+	@Override
+	public Page<ManualInvoice> getInvoicesByAdminAndVendorTypestatusinvoicestatus(InvoiceSortingRequestDTO requestDTO) {
+		String search = requestDTO.getSearch();
+	    String sortBy = requestDTO.getSortField();
+	    String sortDir = requestDTO.getSortOrder();
+	    Integer pageNo = requestDTO.getPageNumber();
+	    Integer pageSize = requestDTO.getPageSize();
+	    Long adminId = requestDTO.getAdminId();
+	    String vendorType = requestDTO.getVendorType();
+	    String status = requestDTO.getStatus(); // ✅ NEW
+
+	    // ✅ Default vendorType
+	    if (vendorType == null || vendorType.trim().isEmpty()) {
+	        vendorType = "payable";
+	    }
+
+	    // ✅ Pagination
+	    if (pageNo == null || pageNo < 0) pageNo = 0;
+	    int zeroBasedPageNo = (pageNo > 0) ? pageNo - 1 : pageNo;
+
+	    if (pageSize == null || pageSize <= 0) pageSize = 10;
+
+	    // ✅ Sorting
+	    if (sortBy == null || sortBy.trim().isEmpty()) sortBy = "invoiceDate";
+	    if (sortDir == null || sortDir.trim().isEmpty()) sortDir = "desc";
+
+	    switch (sortBy.toLowerCase()) {
+	        case "consultantname": sortBy = "consultantName"; break;
+	        case "customer": sortBy = "customer"; break;
+	        case "invoicenumber": sortBy = "invoiceNumber"; break;
+	        case "invoicedate": sortBy = "invoiceDate"; break;
+	        case "duedate": sortBy = "dueDate"; break;
+	        case "paymentdate": sortBy = "paymentDate"; break;
+	        case "paymentamount": sortBy = "paymentAmount"; break;
+	        case "paidamount": sortBy = "paidAmount"; break;
+	        case "paiddate": sortBy = "paidDate"; break;
+	        case "vendortype": sortBy = "vendorType"; break;
+	        case "status": sortBy = "status"; break;
+	        case "total": sortBy = "total"; break;
+	        default: sortBy = "invoiceDate";
+	    }
+
+	    Sort.Direction direction = sortDir.equalsIgnoreCase("desc")
+	            ? Sort.Direction.DESC
+	            : Sort.Direction.ASC;
+
+	    Pageable pageable = PageRequest.of(zeroBasedPageNo, pageSize, Sort.by(direction, sortBy));
+
+	    // ✅ Conditions
+	    boolean hasSearch = search != null && !search.trim().isEmpty();
+	    boolean hasStatus = status != null && !status.trim().isEmpty();
+
+	    // ✅ FINAL FILTER LOGIC
+
+	    if (hasSearch && hasStatus) {
+	        return invoiceRepository.searchInvoicesByAdminVendorTypeAndStatus(
+	                adminId,
+	                vendorType.toLowerCase().trim(),
+	                status.toLowerCase().trim(),
+	                search.toLowerCase().trim(),
+	                pageable
+	        );
+	    }
+
+	    if (hasSearch) {
+	        return invoiceRepository.searchInvoicesByAdminAndVendorType(
+	                adminId,
+	                vendorType.toLowerCase().trim(),
+	                search.toLowerCase().trim(),
+	                pageable
+	        );
+	    }
+
+	    if (hasStatus) {
+	        return invoiceRepository.findByAdminIdAndVendorTypeAndStatusIgnoreCase(
+	                adminId,
+	                vendorType,
+	                status,
+	                pageable
+	        );
+	    }
+
+	    return invoiceRepository.findByAdminIdAndVendorTypeIgnoreCase(
+	            adminId,
+	            vendorType,
+	            pageable
+	    );
+	}
+	
+	
+	
+	
+	
 	
 }

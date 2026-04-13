@@ -1,5 +1,7 @@
 package com.example.serviceImpl;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -20,7 +22,7 @@ public class InvoiceEmailService {
 	@Value("${spring.mail.username}")
 	private String fromMail;
 
-	public void sendInvoiceMail(String toMail, ManualInvoice invoice) {
+	public void sendInvoiceMail(List<String> toMail, ManualInvoice invoice) {
 
 		try {
 
@@ -28,8 +30,9 @@ public class InvoiceEmailService {
 			MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
 			helper.setFrom(fromMail);
-			helper.setTo(toMail);
-			helper.setSubject("Invoice Generated - " + invoice.getInvoiceNumber());
+			 // ✅ List → String[]
+	        helper.setTo(toMail.toArray(new String[0]));			
+	        helper.setSubject("Invoice Generated - " + invoice.getInvoiceNumber());
 
 			String body =
 					"<html>" +
@@ -107,10 +110,9 @@ public class InvoiceEmailService {
 					"<tr>" +
 					"<td bgcolor='#4a6fa5' style='text-align:center;padding:10px;font-size:10px;color:#ffffff;'>" +
 
-					"<b>Narvee ATS</b><br>" +
 					"<span style='font-size:11px;color:#cfd8dc;'>© 2026 All Rights Reserved</span><br><br>" +
 
-					"<a href='mailto:no-reply@narvee.com' style='color:#4fc3f7;text-decoration:none;'>no-reply@narvee.com</a>" +
+//					"<a href='mailto:no-reply@narvee.com' style='color:#4fc3f7;text-decoration:none;'>no-reply@narvee.com</a>" +
 
 					"</td>" +
 					"</tr>" +

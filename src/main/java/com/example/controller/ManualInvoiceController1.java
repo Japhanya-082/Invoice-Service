@@ -519,5 +519,40 @@ public class ManualInvoiceController1 {
 	}
 	
 	
+	@PostMapping("/vendortype-receivablestatus/searchAndSorting")
+	public ResponseEntity<RestAPIResponse> getInvoiceByAdminAndVendorTypestatus(
+	        @RequestBody InvoiceSortingRequestDTO requestDTO) {
+
+	    Page<ManualInvoice> invoices =
+	            serviceImpl1.getInvoiceByAdminAndVendorTypereceivablestatus(requestDTO);
+
+	    return ResponseEntity.ok(
+	            new RestAPIResponse(
+	                    "Success",
+	                    "Invoices fetched successfully",
+	                    invoices.getContent()
+	            )
+	    );
+	}
+	
+	
+	
+	@PostMapping("/invoicestatus/searchAndSorting")
+	public ResponseEntity<RestAPIResponse> getInvoicesByAdminAndVendorTypestatus(
+	        @RequestBody InvoiceSortingRequestDTO requestDTO) {
+
+	    Page<ManualInvoice> invoices =
+	            serviceImpl1.getInvoicesByAdminAndVendorTypestatusinvoicestatus(requestDTO);
+
+	    return ResponseEntity.ok(
+	            new RestAPIResponse(
+	                    "Success",
+	                    "Invoices fetched successfully",
+	                    invoices.getContent()
+	            )
+	    );
+	}
+	
+	
 	
 }
