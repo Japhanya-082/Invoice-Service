@@ -191,16 +191,14 @@ public interface ManualInvoiceRepository
 
 
 	
-	@Query("""
-			SELECT i FROM ManualInvoice i
-			WHERE i.adminId = :adminId
-			AND LOWER(i.vendorType) = LOWER(:vendorType)
-			AND (
-			LOWER(i.consultantName) LIKE %:search%
-			OR LOWER(i.customer) LIKE %:search%
-			OR LOWER(i.invoiceNumber) LIKE %:search%
-			)
-			""")
+	@Query("SELECT i FROM ManualInvoice i\r\n"
+			+ "			WHERE i.adminId = :adminId\r\n"
+			+ "			AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n"
+			+ "			AND (\r\n"
+			+ "			LOWER(i.consultantName) LIKE %:search%\r\n"
+			+ "			OR LOWER(i.customer) LIKE %:search%\r\n"
+			+ "			OR LOWER(i.invoiceNumber) LIKE %:search%\r\n"
+			+ "			)")
 			Page<ManualInvoice> searchInvoicesByAdminAndVendorType(
 			        Long adminId,
 			        String vendorType,
@@ -214,16 +212,14 @@ public interface ManualInvoiceRepository
 	        Pageable pageable
 	);
 
-	@Query("""
-		    SELECT i FROM ManualInvoice i
-		    WHERE i.adminId = :adminId
-		    AND LOWER(i.vendorType) = LOWER(:vendorType)
-		    AND (
-		        LOWER(i.consultantName) LIKE %:search%
-		        OR LOWER(i.customer) LIKE %:search%
-		        OR LOWER(i.invoiceNumber) LIKE %:search%
-		    )
-		""")
+	@Query(" SELECT i FROM ManualInvoice i\r\n"
+			+ "		    WHERE i.adminId = :adminId\r\n"
+			+ "		    AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n"
+			+ "		    AND (\r\n"
+			+ "		        LOWER(i.consultantName) LIKE %:search%\r\n"
+			+ "		        OR LOWER(i.customer) LIKE %:search%\r\n"
+			+ "		        OR LOWER(i.invoiceNumber) LIKE %:search%\r\n"
+			+ "		    )")
 		Page<ManualInvoice> searchInvoiceByAdminAndVendorType(
 		        Long adminId,
 		        String vendorType,
