@@ -409,14 +409,11 @@ public class ManualInvoiceController1 {
 		return manualInvoiceRepository.existsByConsultantId(consultantId);
 	}
 
-//	commented by Bhargav 8-5-2026
 //	@GetMapping("/consultant/{consultantId}/exists")
 //	public boolean hasInvoices(@PathVariable("consultantId") Long consultantId, @RequestParam Long adminId) {
 //
 //		return manualInvoiceRepository.existsByConsultantIdAndAdminId(consultantId, adminId);
 //	}
-//	commented by Bhargav 8-5-2026
-
 
 	@PostMapping("/send-mail/{invoiceNumber}")
 	public ResponseEntity<RestAPIResponse> sendInvoiceMail(@PathVariable String invoiceNumber,
