@@ -74,6 +74,6 @@ public interface ManualInvoiceService1 {
 	
 	public Page<ManualInvoice> getInvoicesByAdminAndVendorTypestatusinvoicestatus(InvoiceSortingRequestDTO requestDTO) ;
 	
-	 public Map<String, Object> getInvoiceStatusCounts(Long adminId);
+	 public Map<String, Object> getInvoiceStatusCounts(Long adminId); 
 	
 }

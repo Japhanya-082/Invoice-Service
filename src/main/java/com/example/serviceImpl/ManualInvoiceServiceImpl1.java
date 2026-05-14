@@ -1302,17 +1302,13 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 	
 	@Override
 	public Map<String, Object> getInvoiceStatusCounts(Long adminId) {
-
 	    Object[] result = (Object[]) invoiceRepository.getInvoiceStatusCounts(adminId);
-
 	    Map<String, Object> data = new LinkedHashMap<>();
-
 	    data.put("pendingCount", ((Number) result[1]).intValue());
 	    data.put("adminId", adminId);
 	    data.put("paidCount", ((Number) result[0]).intValue());
 	    data.put("receivedCount", ((Number) result[2]).intValue());
 	    data.put("totalCount", ((Number) result[3]).intValue());
-
 	    return data;
 	}
 

@@ -369,6 +369,7 @@ public interface ManualInvoiceRepository
     	        Pageable pageable
     	);
     
+    
 		@Query(value = """
 				SELECT
 				    COUNT(CASE WHEN LOWER(status) = 'paid' THEN 1 END) AS paid_count,
@@ -380,4 +381,5 @@ public interface ManualInvoiceRepository
 				""", nativeQuery = true)
 		Object getInvoiceStatusCounts(@Param("adminId") Long adminId);
 
+		
 }

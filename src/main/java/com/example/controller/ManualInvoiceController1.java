@@ -557,15 +557,12 @@ public class ManualInvoiceController1 {
 	
 	@GetMapping("/status-count/{adminId}")
 	public ResponseEntity<?> getInvoiceStatusCounts(@PathVariable Long adminId) {
-
 		Map<String, Object> data = serviceImpl1.getInvoiceStatusCounts(adminId);
-
 		Map<String, Object> response = new LinkedHashMap<>();
 
 		response.put("message", "Invoice status counts fetched successfully");
 		response.put("status", "success");
 		response.put("data", data);
-
 		return ResponseEntity.ok(response);
 	}
 	
