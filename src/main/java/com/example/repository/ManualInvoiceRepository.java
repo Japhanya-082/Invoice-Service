@@ -369,5 +369,15 @@ public interface ManualInvoiceRepository
     	        Pageable pageable
     	);
     
-    
+		@Query(value = """
+				SELECT
+				    COUNT(CASE WHEN LOWER(status) = 'paid' THEN 1 END) AS paid_count,
+				    COUNT(CASE WHEN LOWER(status) = 'pending' THEN 1 END) AS pending_count,
+				    COUNT(CASE WHEN LOWER(status) = 'received' THEN 1 END) AS received_count,
+				    COUNT(*) AS total_count
+				FROM invoice.manual_invoices
+				WHERE admin_id = :adminId
+				""", nativeQuery = true)
+		Object getInvoiceStatusCounts(@Param("adminId") Long adminId);
+
 }
