@@ -962,32 +962,24 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	@Override
 	public void sendInvoiceMails(String invoiceNumber, Long adminId) {
-
 		try {
 			ManualInvoice invoice = invoiceRepository.findByInvoiceNumberAndAdminId(invoiceNumber, adminId)
 					.orElseThrow(() -> new RuntimeException("Invoice not found or unauthorized access"));
-
 			String emailsString = invoice.getCustomerEmail();
-
 			if (emailsString == null || emailsString.trim().isEmpty()) {
 				throw new RuntimeException("No email addresses found");
 			}
-
 			// ✅ Convert comma-separated string → List
 			List<String> emails = Arrays.stream(emailsString.split(",")).map(String::trim) // remove spaces
 					.filter(email -> !email.isEmpty()).toList();
-
 			if (emails.isEmpty()) {
 				throw new RuntimeException("No valid email addresses found");
 			}
-
 			// ✅ Send mail
 			invoiceEmailService.sendInvoiceMail(emails, invoice);
-
 			// ✅ Update status
 			invoice.setStatus("Pending");
 			invoiceRepository.save(invoice);
-
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to send invoice mail: " + e.getMessage());
 		}
@@ -995,31 +987,25 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	@Override
 	public Page<ManualInvoice> getInvoiceByAdminAndVendorType(InvoiceSortingRequestDTO requestDTO) {
-
 		String search = requestDTO.getSearch();
 		String sortBy = requestDTO.getSortField();
 		String sortDir = requestDTO.getSortOrder();
 		Integer pageNo = requestDTO.getPageNumber();
 		Integer pageSize = requestDTO.getPageSize();
 		Long adminId = requestDTO.getAdminId();
-
 		// ✅ FORCE RECEIVABLE ONLY (main change)
 		String vendorType = "Receivable";
-
 		// ✅ Pagination
 		if (pageNo == null || pageNo < 0)
 			pageNo = 0;
 		int zeroBasedPageNo = (pageNo > 0) ? pageNo - 1 : pageNo;
-
 		if (pageSize == null || pageSize <= 0)
 			pageSize = 10;
-
 		// ✅ Sorting defaults
 		if (sortBy == null || sortBy.trim().isEmpty())
 			sortBy = "invoiceDate";
 		if (sortDir == null || sortDir.trim().isEmpty())
 			sortDir = "desc";
-
 		// ✅ Sorting field mapping
 		switch (sortBy.toLowerCase()) {
 		case "consultantname":
@@ -1061,18 +1047,15 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		default:
 			sortBy = "invoiceDate";
 		}
-
 		Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
 
 		Pageable pageable = PageRequest.of(zeroBasedPageNo, pageSize, Sort.by(direction, sortBy));
 
 		boolean hasSearch = search != null && !search.trim().isEmpty();
-
 		if (hasSearch) {
 			return invoiceRepository.searchInvoiceByAdminAndVendorType(adminId, vendorType, search.trim().toLowerCase(),
 					pageable);
 		}
-
 		return invoiceRepository.findByAdminIdAndVendorTypeIgnoreCase(adminId, vendorType, pageable);
 	}
 
