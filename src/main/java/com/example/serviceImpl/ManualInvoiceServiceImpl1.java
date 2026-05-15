@@ -1145,7 +1145,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		Long adminId = requestDTO.getAdminId();
 
 		// ✅ ALWAYS RECEIVABLE
-		String vendorType = "Receivable";
+		String vendorType = "receivable";
 
 		// ✅ FIX: treat empty status as null
 		String status = (requestDTO.getStatus() != null && !requestDTO.getStatus().trim().isEmpty())
