@@ -510,36 +510,65 @@ public class ManualInvoiceController1 {
 	
 	@PostMapping("/vendortype-receivablestatus/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoiceByAdminAndVendorTypestatus(
-	        @RequestBody InvoiceSortingRequestDTO requestDTO) {
+			@RequestBody InvoiceSortingRequestDTO requestDTO) {
 
-	    Page<ManualInvoice> invoices =
-	            serviceImpl1.getInvoiceByAdminAndVendorTypereceivablestatus(requestDTO);
+		Page<ManualInvoice> invoices = serviceImpl1.getInvoiceByAdminAndVendorTypereceivablestatus(requestDTO);
 
-	    return ResponseEntity.ok(
-	            new RestAPIResponse(
-	                    "Success",
-	                    "Invoices fetched successfully",
-	                    invoices.getContent()
-	            )
-	    );
+		Map<String, Object> responseData = new HashMap<>();
+
+		responseData.put("data", invoices.getContent());
+
+		// Custom pageable response without duplicate sort
+		Map<String, Object> pageableData = new HashMap<>();
+		pageableData.put("pageNumber", invoices.getPageable().getPageNumber());
+		pageableData.put("pageSize", invoices.getPageable().getPageSize());
+		pageableData.put("offset", invoices.getPageable().getOffset());
+		pageableData.put("paged", invoices.getPageable().isPaged());
+		pageableData.put("unpaged", invoices.getPageable().isUnpaged());
+		responseData.put("pageable", pageableData);
+		// Keep sort only one time here
+		responseData.put("sort", invoices.getSort());
+		responseData.put("last", invoices.isLast());
+		responseData.put("totalPages", invoices.getTotalPages());
+		responseData.put("totalElements", invoices.getTotalElements());
+		responseData.put("first", invoices.isFirst());
+		responseData.put("size", invoices.getSize());
+		responseData.put("number", invoices.getNumber());
+		responseData.put("numberOfElements", invoices.getNumberOfElements());
+		responseData.put("empty", invoices.isEmpty());
+		return ResponseEntity.ok(new RestAPIResponse("Success", "Invoices fetched successfully", responseData));
 	}
 	
 	
 	
 	@PostMapping("/invoicestatus/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoicesByAdminAndVendorTypestatus(
-	        @RequestBody InvoiceSortingRequestDTO requestDTO) {
+			@RequestBody InvoiceSortingRequestDTO requestDTO) {
 
-	    Page<ManualInvoice> invoices =
-	            serviceImpl1.getInvoicesByAdminAndVendorTypestatusinvoicestatus(requestDTO);
+		Page<ManualInvoice> invoices = serviceImpl1.getInvoicesByAdminAndVendorTypestatusinvoicestatus(requestDTO);
 
-	    return ResponseEntity.ok(
-	            new RestAPIResponse(
-	                    "Success",
-	                    "Invoices fetched successfully",
-	                    invoices.getContent()
-	            )
-	    );
+		Map<String, Object> responseData = new HashMap<>();
+		responseData.put("data", invoices.getContent());
+		// Custom pageable response
+		Map<String, Object> pageableData = new HashMap<>();
+		pageableData.put("pageNumber", invoices.getPageable().getPageNumber());
+		pageableData.put("pageSize", invoices.getPageable().getPageSize());
+		pageableData.put("offset", invoices.getPageable().getOffset());
+		pageableData.put("paged", invoices.getPageable().isPaged());
+		pageableData.put("unpaged", invoices.getPageable().isUnpaged());
+		responseData.put("pageable", pageableData);
+		// Sort only one time
+		responseData.put("sort", invoices.getSort());
+		responseData.put("last", invoices.isLast());
+		responseData.put("totalPages", invoices.getTotalPages());
+		responseData.put("totalElements", invoices.getTotalElements());
+		responseData.put("first", invoices.isFirst());
+		responseData.put("size", invoices.getSize());
+		responseData.put("number", invoices.getNumber());
+		responseData.put("numberOfElements", invoices.getNumberOfElements());
+		responseData.put("empty", invoices.isEmpty());
+
+		return ResponseEntity.ok(new RestAPIResponse("Success", "Invoices fetched successfully", responseData));
 	}
 	
 	
