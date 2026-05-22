@@ -1,0 +1,268 @@
+package com.invoice.repository;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import com.invoice.entity.ManualInvoice;
+
+@Repository
+public interface ManualInvoiceRepository
+		extends JpaRepository<ManualInvoice, Long>, JpaSpecificationExecutor<ManualInvoice> {
+
+	boolean existsByInvoiceNumber(String invoiceNumber);
+
+	List<ManualInvoice> findByCustomerVendorId(Long vendorId);
+
+	List<ManualInvoice> findByConsultantId(Long consultantId);
+
+
+	List<ManualInvoice> findByCustomerVendorIdAndAdminId(Long vendorId, Long adminId);
+
+	@Query("SELECT m FROM ManualInvoice m\r\n"
+			+ "			WHERE\r\n"
+			+ "			    :keyword IS NULL OR :keyword = '' OR (\r\n"
+			+ "\r\n"
+			+ "\r\n"
+			+ "			        LOWER(COALESCE(m.customer, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.customerEmail, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.customerPhone, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.invoiceNumber, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.paymentTerms, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.currency, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.poNumber, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.salesRep, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.status, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.issuedBy, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.notes, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.termsAndConditions, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "\r\n"
+			+ "\r\n"
+			+ "			        OR CAST(m.invoiceDate AS string) LIKE CONCAT('%', :keyword, '%')\r\n"
+			+ "			        OR CAST(m.dueDate AS string) LIKE CONCAT('%', :keyword, '%')\r\n"
+			+ "			        OR CAST(m.createdAt AS string) LIKE CONCAT('%', :keyword, '%')\r\n"
+			+ "			        OR CAST(m.updatedAt AS string) LIKE CONCAT('%', :keyword, '%')\r\n"
+			+ "\r\n"
+			+ "\r\n"
+			+ "			        OR CAST(m.total AS string) LIKE CONCAT('%', :keyword, '%')\r\n"
+			+ "			        OR CAST(m.subtotal AS string) LIKE CONCAT('%', :keyword, '%')\r\n"
+			+ "			        OR CAST(m.tax AS string) LIKE CONCAT('%', :keyword, '%')\r\n"
+			+ "			        OR CAST(m.amountDue AS string) LIKE CONCAT('%', :keyword, '%')\r\n"
+			+ "			        OR CAST(m.credit AS string) LIKE CONCAT('%', :keyword, '%')\r\n"
+			+ "			        OR CAST(m.totalHours AS string) LIKE CONCAT('%', :keyword, '%')\r\n"
+			+ "\r\n"
+			+ "\r\n"
+			+ "			        OR LOWER(COALESCE(m.billingAddress.street, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.billingAddress.city, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.billingAddress.state, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.billingAddress.zipCode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "\r\n"
+			+ "\r\n"
+			+ "			        OR LOWER(COALESCE(m.shippingAddress.street, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.shippingAddress.city, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.shippingAddress.state, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			        OR LOWER(COALESCE(m.shippingAddress.zipCode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
+			+ "			    )")
+	Page<ManualInvoice> searchInvoices(@Param("keyword") String keyword, Pageable pageable);
+
+	long countByCustomerVendorId(Long vendorId);
+
+	boolean existsByPoNumber(String poNumber);
+
+	boolean existsByPoNumberAndIdNot(String poNumber, Long id);
+
+	Optional<ManualInvoice> findByInvoiceNumber(String invoiceNumber);
+
+	boolean existsByPoNumberIgnoreCaseAndIdNot(String poNumber, Long id);
+
+	boolean existsByPoNumberIgnoreCase(String poNumber);
+
+	@Query("SELECT COUNT(i) FROM ManualInvoice i")
+	Long getTotalInvoiceCount();
+
+	@Query("SELECT COUNT(i) FROM ManualInvoice i WHERE LOWER(i.status) = 'paid'")
+	Long getPaidInvoiceCount();
+
+	@Query("SELECT COUNT(i) FROM ManualInvoice i WHERE LOWER(i.status) = 'pending'")
+	Long getPendingInvoiceCount();
+
+	@Query("SELECT COUNT(i) FROM ManualInvoice i WHERE LOWER(i.status) = 'overdue'")
+	Long getOverdueInvoiceCount();
+
+	@Query("SELECT COUNT(i) FROM ManualInvoice i WHERE LOWER(i.status) = 'overdue' AND i.dueDate = :today")
+	Long countOverdueInvoicesForToday(@Param("today") LocalDate today);
+
+	@Query("SELECT i FROM ManualInvoice i LEFT JOIN FETCH i.items WHERE LOWER(i.status) = 'overdue' AND i.dueDate = :today")
+	List<ManualInvoice> findOverdueInvoicesForToday(@Param("today") LocalDate today);
+
+	boolean existsByConsultantId(Long consultantId);
+
+	boolean existsByConsultantIdAndAdminId(Long consultantId, Long adminId);
+	Optional<ManualInvoice> findByIdAndAdminId(Long id, Long adminId);
+
+	boolean existsByPoNumberIgnoreCaseAndAdminId(String poNumber, Long adminId);
+
+	boolean existsByPoNumberIgnoreCaseAndAdminIdAndIdNot(String poNumber, Long adminId, Long id);
+
+	List<ManualInvoice> findByAdminId(Long adminId);
+
+	@Query("SELECT mi FROM ManualInvoice mi WHERE mi.adminId = :adminId AND " + "LOWER(mi.status) = 'draft' AND "
+			+ "(:keyword = '' OR " + "LOWER(mi.customer) LIKE :keyword OR " + "LOWER(mi.poNumber) LIKE :keyword OR "
+			+ "LOWER(mi.invoiceNumber) LIKE :keyword OR " + "LOWER(mi.consultantName) LIKE :keyword OR "
+			+ "CAST(mi.totalHours AS string) LIKE :keyword OR " + "CAST(mi.dueDate AS string) LIKE :keyword OR "
+			+ "CAST(mi.invoiceDate AS string) LIKE :keyword OR " + "CAST(mi.dueAmount AS string) LIKE :keyword OR "
+			+ "CAST(mi.paymentAmount AS string) LIKE :keyword OR " + "CAST(mi.createdAt AS string) LIKE :keyword OR "
+			+ "LOWER(mi.status) LIKE :keyword)")
+	Page<ManualInvoice> searchInvoices(@Param("keyword") String keyword, @Param("adminId") Long adminId,
+			Pageable pageable);
+
+	Optional<ManualInvoice> findByInvoiceNumberAndAdminId(String invoiceNumber, Long adminId);
+
+	List<ManualInvoice> findByAdminIdAndStatusInIgnoreCase(Long adminId, List<String> statuses);
+
+	Page<ManualInvoice> findByAdminIdAndStatusInIgnoreCase(Long adminId, List<String> statuses, Pageable pageable);
+
+	@Query("SELECT m FROM ManualInvoice m\r\n"
+			+ "			WHERE m.adminId = :adminId\r\n"
+			+ "			AND LOWER(m.status) IN :statuses\r\n"
+			+ "			AND (\r\n"
+			+ "			    LOWER(m.consultantName) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "			    OR LOWER(m.customer) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "			    OR LOWER(m.invoiceNumber) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "			)")
+	Page<ManualInvoice> searchInvoicesByAdmin(Long adminId, List<String> statuses, String search, Pageable pageable);
+
+	boolean existsByPoNumberAndConsultantIdNot(String poNumber, Long consultantId);
+
+	boolean existsByPoNumberAndConsultantIdNotAndIdNot(String poNumber, Long consultantId, Long id);
+
+	@Query("SELECT i FROM ManualInvoice i\r\n" + "WHERE i.adminId = :adminId\r\n"
+			+ "			AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n" + "			AND (\r\n"
+			+ "			LOWER(i.consultantName) LIKE %:search%\r\n" + "			OR LOWER(i.customer) LIKE %:search%\r\n"
+			+ "			OR LOWER(i.invoiceNumber) LIKE %:search%\r\n" + "			)")
+	Page<ManualInvoice> searchInvoicesByAdminAndVendorType(Long adminId, String vendorType, String search,
+			Pageable pageable);
+
+	Page<ManualInvoice> findByAdminIdAndVendorTypeIgnoreCase(Long adminId, String vendorType, Pageable pageable);
+
+	@Query(" SELECT i FROM ManualInvoice i\r\n" + "		    WHERE i.adminId = :adminId\r\n"
+			+ "		    AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n" + "		    AND (\r\n"
+			+ "		        LOWER(i.consultantName) LIKE %:search%\r\n"
+			+ "		        OR LOWER(i.customer) LIKE %:search%\r\n"
+			+ "		        OR LOWER(i.invoiceNumber) LIKE %:search%\r\n" + "		    )")
+	Page<ManualInvoice> searchInvoiceByAdminAndVendorType(Long adminId, String vendorType, String search,
+			Pageable pageable);
+
+	// ✅ CASE 1: ALL DATA (adminId only)
+	Page<ManualInvoice> findByAdminId(Long adminId, Pageable pageable);
+
+	// ✅ CASE 2: vendorType + status + search
+	@Query("SELECT i FROM ManualInvoice i\r\n" + "    	    WHERE i.adminId = :adminId\r\n"
+			+ "    	    AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n"
+			+ "    	    AND LOWER(i.status) = LOWER(:status)\r\n" + "    	    AND (\r\n"
+			+ "    	        :search IS NULL OR :search = '' OR (\r\n"
+			+ "    	            LOWER(i.consultantName) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "    	            OR LOWER(i.customer) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "    	            OR LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "    	            OR LOWER(i.customerEmail) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "    	            OR LOWER(i.customerPhone) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "    	            OR LOWER(i.poNumber) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "    	            OR LOWER(i.status) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "    	            OR LOWER(i.paymentTerms) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "    	            OR LOWER(i.currency) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "    	            OR CAST(i.total AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.subtotal AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.amountDue AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.paidAmount AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.dueAmount AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.periodend AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.periodStart AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.vendorType AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.totalHours AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.invoiceDate AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.dueDate AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.paymentAmount AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.paymentDate AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	            OR CAST(i.paidDate AS string) LIKE CONCAT('%', :search, '%')\r\n"
+			+ "    	        )\r\n" + "    	    )")
+	Page<ManualInvoice> searchInvoicesByAdminVendorTypeAndStatus(Long adminId, String vendorType, String status,
+			String search, Pageable pageable);
+
+	// ✅ CASE 3: vendorType + status
+	Page<ManualInvoice> findByAdminIdAndVendorTypeAndStatusIgnoreCase(Long adminId, String vendorType, String status,
+			Pageable pageable);
+
+	// ✅ CASE 5: status only
+	Page<ManualInvoice> findByAdminIdAndStatusIgnoreCase(Long adminId, String status, Pageable pageable);
+
+	// ✅ CASE 6: search only
+	@Query("  SELECT i FROM ManualInvoice i\r\n"
+			+ "			    WHERE i.adminId = :adminId\r\n"
+			+ "			    AND (\r\n"
+			+ "			        LOWER(i.consultantName) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "			        OR LOWER(i.customer) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "			        OR LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+			+ "			    )")
+	Page<ManualInvoice> searchInvoicesByAdminOnly(Long adminId, String search, Pageable pageable);
+
+	// Receivable
+		@Query("SELECT i FROM ManualInvoice i\r\n" + "    WHERE i.adminId = :adminId\r\n"
+				+ "    AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n" + "    AND LOWER(i.status) = LOWER(:status)\r\n"
+				+ "    AND (\r\n" + "        :search IS NULL OR :search = '' OR (\r\n"
+				+ "            LOWER(i.consultantName) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+				+ "            OR LOWER(i.customer) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+				+ "            OR LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+				+ "            OR LOWER(i.customerEmail) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+				+ "            OR LOWER(i.customerPhone) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+				+ "            OR LOWER(i.poNumber) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+				+ "            OR LOWER(i.status) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+				+ "            OR LOWER(i.paymentTerms) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+				+ "            OR LOWER(i.currency) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
+				+ "            OR CAST(i.total AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.subtotal AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.amountDue AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.paidAmount AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.dueAmount AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.periodend AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.periodStart AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.vendorType AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.totalHours AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.invoiceDate AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.dueDate AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.paymentAmount AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.paymentDate AS string) LIKE CONCAT('%', :search, '%')\r\n"
+				+ "            OR CAST(i.paidDate AS string) LIKE CONCAT('%', :search, '%')\r\n" + "        )\r\n"
+				+ "    )")
+		Page<ManualInvoice> searchReceivableByStatusAndSearch(Long adminId, String vendorType, String status, String search,
+				Pageable pageable);
+		// Receivable
+
+		@Query(value = "SELECT i FROM ManualInvoice i\r\n"
+				+ "			    WHERE i.adminId = :adminId\r\n"
+				+ "			    AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n"
+				+ "			    AND LOWER(i.status) = LOWER(:status)")
+	Page<ManualInvoice> findReceivableByStatus(Long adminId, String vendorType, String status, Pageable pageable);
+
+	@Query(value = "SELECT\r\n"
+			+ "			    COUNT(CASE WHEN LOWER(status) = 'paid' THEN 1 END) AS paid_count,\r\n"
+			+ "			    COUNT(CASE WHEN LOWER(status) = 'pending' THEN 1 END) AS pending_count,\r\n"
+			+ "			    COUNT(CASE WHEN LOWER(status) = 'received' THEN 1 END) AS received_count,\r\n"
+			+ "			    COUNT(*) AS total_count\r\n"
+			+ "			FROM invoice.manual_invoices\r\n"
+			+ "			WHERE admin_id = :adminId", nativeQuery = true)
+	Object getInvoiceStatusCounts(@Param("adminId") Long adminId);
+
+	
+	   boolean existsByEmploymentId(Long employmentId);
+
+
+
+}
