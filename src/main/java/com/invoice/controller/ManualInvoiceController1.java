@@ -56,7 +56,7 @@ public class ManualInvoiceController1 {
 
 	@Autowired
 	private ManualInvoiceRepository manualInvoiceRepository;
-	
+
 	@Autowired
 	private VendorClientService vendorClientService;
 
@@ -74,16 +74,16 @@ public class ManualInvoiceController1 {
 
 		try {
 			ManualInvoice invoice = objectMapper.convertValue(payload, ManualInvoice.class);
-			
+
 			// FIX frontend bug: id = ""
 			if (payload.get("id") == null || payload.get("id").toString().isBlank()) {
 				invoice.setId(null);
 			}
-			
-			 // ✅ FIX vendorType mapping
-	        if (payload.get("vendorType") != null) {
-	            invoice.setVendorType(payload.get("vendorType").toString());
-	        }
+
+			// ✅ FIX vendorType mapping
+			if (payload.get("vendorType") != null) {
+				invoice.setVendorType(payload.get("vendorType").toString());
+			}
 
 			// Shipping address
 			Object shippingObj = payload.get("shippingAddress");
@@ -336,8 +336,6 @@ public class ManualInvoiceController1 {
 					.body(new RestAPIResponse("Error", "Failed to update invoice: " + e.getMessage(), null));
 		}
 	}
-	
-	
 
 	@PutMapping("/update/{id}")
 	public ResponseEntity<RestAPIResponse> updateManualInvoice(@PathVariable Long id,
@@ -415,71 +413,52 @@ public class ManualInvoiceController1 {
 					.body(new RestAPIResponse("fail", e.getMessage(), null));
 		}
 	}
+
 	@GetMapping("/consultant/{consultantId}")
 	public ResponseEntity<?> getInvoicesByConsultant(@PathVariable Long consultantId) {
-	    List<ManualInvoice> invoices = serviceImpl1.getInvoicesByConsultantId(consultantId);
-	    return ResponseEntity.ok(new RestAPIResponse("Success", "Invoices fetched successfully", invoices));
+		List<ManualInvoice> invoices = serviceImpl1.getInvoicesByConsultantId(consultantId);
+		return ResponseEntity.ok(new RestAPIResponse("Success", "Invoices fetched successfully", invoices));
 	}
 
 	@GetMapping("/pending-invoices/{adminId}")
 	public ResponseEntity<RestAPIResponse> getPendingInvoices(@PathVariable Long adminId) {
 
-	    List<ManualInvoice> invoices = serviceImpl1.getPendingInvoicesByAdmin(adminId);
+		List<ManualInvoice> invoices = serviceImpl1.getPendingInvoicesByAdmin(adminId);
 
-	    return ResponseEntity.ok(
-	            new RestAPIResponse("Success", "Pending & Partially Paid invoices fetched successfully", invoices)
-	    );
+		return ResponseEntity
+				.ok(new RestAPIResponse("Success", "Pending & Partially Paid invoices fetched successfully", invoices));
 	}
-	
-	
+
 	@PostMapping("/pending-invoices/searchAndsorting")
-	public ResponseEntity<RestAPIResponse> getPendingInvoices(
-	        @RequestBody InvoiceSortingRequestDTO requestDTO) {
+	public ResponseEntity<RestAPIResponse> getPendingInvoices(@RequestBody InvoiceSortingRequestDTO requestDTO) {
 
-	    Page<ManualInvoice> invoices =
-	            serviceImpl1.getPendingInvoicesByAdmin(requestDTO);
+		Page<ManualInvoice> invoices = serviceImpl1.getPendingInvoicesByAdmin(requestDTO);
 
-	    return ResponseEntity.ok(
-	            new RestAPIResponse(
-	                    "Success",
-	                    "Pending & Partially received invoices fetched successfully",
-	                    invoices.getContent()
-	            )
-	    );
+		return ResponseEntity.ok(new RestAPIResponse("Success",
+				"Pending & Partially received invoices fetched successfully", invoices.getContent()));
 	}
 
 	@PostMapping("/invoices/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoicesByAdminAndVendorType(
-	        @RequestBody InvoiceSortingRequestDTO requestDTO) {
+			@RequestBody InvoiceSortingRequestDTO requestDTO) {
 
-	    Page<ManualInvoice> invoices =
-	            serviceImpl1.getInvoicesByAdminAndVendorType(requestDTO);
+		Page<ManualInvoice> invoices = serviceImpl1.getInvoicesByAdminAndVendorType(requestDTO);
 
-	    return ResponseEntity.ok(
-	            new RestAPIResponse(
-	                    "Success",
-	                    "Invoices fetched successfully",
-	                    invoices.getContent()
-	            )
-	    );
+		return ResponseEntity
+				.ok(new RestAPIResponse("Success", "Invoices fetched successfully", invoices.getContent()));
 	}
-	
+
 	@PostMapping("/send-mails/{invoiceNumber}")
-	public ResponseEntity<RestAPIResponse> sendInvoiceMails(
-	        @PathVariable String invoiceNumber,
-	        @RequestParam Long adminId) {
-	    try {
-	        serviceImpl1.sendInvoiceMails(invoiceNumber, adminId);
-	        return ResponseEntity.ok(
-	                new RestAPIResponse("success", "Invoice mail sent successfully", null)
-	        );
-	    } catch (RuntimeException e) {
-	        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-	                .body(new RestAPIResponse("fail", e.getMessage(), null));
-	    }
+	public ResponseEntity<RestAPIResponse> sendInvoiceMails(@PathVariable String invoiceNumber,
+			@RequestParam Long adminId) {
+		try {
+			serviceImpl1.sendInvoiceMails(invoiceNumber, adminId);
+			return ResponseEntity.ok(new RestAPIResponse("success", "Invoice mail sent successfully", null));
+		} catch (RuntimeException e) {
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+					.body(new RestAPIResponse("fail", e.getMessage(), null));
+		}
 	}
-	
-	
 
 	@PostMapping("/vendortype-receivable/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoiceByAdminAndVendorType(
@@ -488,8 +467,7 @@ public class ManualInvoiceController1 {
 		return ResponseEntity
 				.ok(new RestAPIResponse("Success", "Invoices fetched successfully", invoices.getContent()));
 	}
-	
-	
+
 	@PostMapping("/vendortype-receivablestatus/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoiceByAdminAndVendorTypestatus(
 			@RequestBody InvoiceSortingRequestDTO requestDTO) {
@@ -520,8 +498,7 @@ public class ManualInvoiceController1 {
 		responseData.put("empty", invoices.isEmpty());
 		return ResponseEntity.ok(new RestAPIResponse("Success", "Invoices fetched successfully", responseData));
 	}
-	
-	
+
 	@PostMapping("/invoicestatus/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoicesByAdminAndVendorTypestatus(
 			@RequestBody InvoiceSortingRequestDTO requestDTO) {
@@ -551,8 +528,7 @@ public class ManualInvoiceController1 {
 
 		return ResponseEntity.ok(new RestAPIResponse("Success", "Invoices fetched successfully", responseData));
 	}
-	
-	
+
 	@GetMapping("/status-count/{adminId}")
 	public ResponseEntity<?> getInvoiceStatusCounts(@PathVariable Long adminId) {
 		Map<String, Object> data = serviceImpl1.getInvoiceStatusCounts(adminId);
@@ -563,12 +539,10 @@ public class ManualInvoiceController1 {
 		response.put("data", data);
 		return ResponseEntity.ok(response);
 	}
-	
-	
-	 @GetMapping("/check-employment/{employmentId}")
-	    public ResponseEntity<Boolean> checkEmploymentInvoices(
-	            @PathVariable Long employmentId) {
-	        return serviceImpl1.checkEmploymentInvoices(employmentId);
-	    }
-	
+
+	@GetMapping("/check-employment/{employmentId}")
+	public ResponseEntity<Boolean> checkEmploymentInvoices(@PathVariable Long employmentId) {
+		return serviceImpl1.checkEmploymentInvoices(employmentId);
+	}
+
 }

@@ -18,12 +18,14 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class Invoice {
 
+	
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private long invoiceId;
 
 	private Long consultantId;
 
+	
 	private String invoiceNumber;
 	private LocalDate date;
 	private LocalDate dueDate;
@@ -42,4 +44,5 @@ public class Invoice {
 	@UpdateTimestamp
 	private LocalDateTime updatedAt;
 
+	
 }

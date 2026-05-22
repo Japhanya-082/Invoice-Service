@@ -11,21 +11,20 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Configuration
 public class FeignClientInterceptor implements RequestInterceptor {
 
-    @Override
-    public void apply(RequestTemplate template) {
+	@Override
+	public void apply(RequestTemplate template) {
 
-        ServletRequestAttributes attributes =
-                (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+		ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
 
-        if (attributes != null) {
+		if (attributes != null) {
 
-            HttpServletRequest request = attributes.getRequest();
+			HttpServletRequest request = attributes.getRequest();
 
-            String authorizationHeader = request.getHeader("Authorization");
+			String authorizationHeader = request.getHeader("Authorization");
 
-            if (authorizationHeader != null) {
-                template.header("Authorization", authorizationHeader);
-            }
-        }
-    }
+			if (authorizationHeader != null) {
+				template.header("Authorization", authorizationHeader);
+			}
+		}
+	}
 }

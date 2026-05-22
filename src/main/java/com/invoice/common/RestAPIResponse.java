@@ -47,7 +47,9 @@ public class RestAPIResponse {
 		this.message = message;
 		this.data = data;
 	}
-	public RestAPIResponse(String status,  Object data) {
+	
+
+	public RestAPIResponse(String status, Object data) {
 		this();
 		this.status = status;
 		this.data = data;

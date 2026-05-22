@@ -18,84 +18,65 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class EmailServiceImpl implements EmailService {
 
-    private final JavaMailSender mailSender;
+	private final JavaMailSender mailSender;
 
-    @Override
-    public void sendOverdueInvoiceEmail(UserDTO sender, ManualInvoice invoice) {
+	@Override
+	public void sendOverdueInvoiceEmail(UserDTO sender, ManualInvoice invoice) {
 
-        try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+		try {
+			MimeMessage message = mailSender.createMimeMessage();
+			MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            //  Consultant name from InvoiceItem
-            String consultantName = "N/A";
-            if (invoice.getItems() != null && !invoice.getItems().isEmpty()) {
-                consultantName = invoice.getItems().get(0).getName();
-            }
+			// Consultant name from InvoiceItem
+			String consultantName = "N/A";
+			if (invoice.getItems() != null && !invoice.getItems().isEmpty()) {
+				consultantName = invoice.getItems().get(0).getName();
+			}
 
-            //  Email Subject
-            helper.setSubject(
-                "Pending Payment – Consultant Invoice " + invoice.getInvoiceNumber()
-            );
+			// Email Subject
+			helper.setSubject("Pending Payment – Consultant Invoice " + invoice.getInvoiceNumber());
 
-            //  TO & FROM
-            helper.setTo(invoice.getCustomerEmail());
-            helper.setFrom(sender.getEmail());
+			// TO & FROM
+			helper.setTo(invoice.getCustomerEmail());
+			helper.setFrom(sender.getEmail());
 
-            // HTML Email Body
-            String htmlContent =
-                "<p>Hi Team,</p>" +
+			// HTML Email Body
+			String htmlContent = "<p>Hi Team,</p>" +
 
-                "<p>We would like to inform you that the invoice generated for Consultant: " +
-                "<b>" + consultantName + "</b> is still pending and has not been cleared.</p>" +
+					"<p>We would like to inform you that the invoice generated for Consultant: " + "<b>"
+					+ consultantName + "</b> is still pending and has not been cleared.</p>" +
 
-                "<p><b>Below are the invoice details for your reference:</b></p>" +
+					"<p><b>Below are the invoice details for your reference:</b></p>" +
 
-                "<p>" +
-                "<b>Invoice Number :</b> " + invoice.getInvoiceNumber() + "<br>" +
-                "<b>Invoice Date :</b> " + invoice.getInvoiceDate() + "<br>" +
-                "<b>Amount Due :</b> " + invoice.getAmountDue() + "<br>" +
-                "<b>Due Date :</b> " + invoice.getDueDate() +
-                "</p>" +
+					"<p>" + "<b>Invoice Number :</b> " + invoice.getInvoiceNumber() + "<br>" + "<b>Invoice Date :</b> "
+					+ invoice.getInvoiceDate() + "<br>" + "<b>Amount Due :</b> " + invoice.getAmountDue() + "<br>"
+					+ "<b>Due Date :</b> " + invoice.getDueDate() + "</p>" +
 
-                "<p>" +
-                "We kindly request you to prioritize this payment and complete it at the earliest to avoid any follow-ups.<br>" +
-                "If the payment has already been initiated, please share the transaction reference for verification." +
-                "</p>" +
+					"<p>"
+					+ "We kindly request you to prioritize this payment and complete it at the earliest to avoid any follow-ups.<br>"
+					+ "If the payment has already been initiated, please share the transaction reference for verification."
+					+ "</p>" +
 
-                "<p>For any clarification or concerns, feel free to reach out to us.<br>" +
-                "Thank you for your cooperation.</p>" +
+					"<p>For any clarification or concerns, feel free to reach out to us.<br>"
+					+ "Thank you for your cooperation.</p>" +
 
-                
-                "<p style='color:#1f4fd8; font-weight:bold;'>" +
-                sender.getFullName() + "<br>" +
-                sender.getRoleName() + "<br>" +
-                sender.getCompanyName() + "<br>" +
-                invoice.getShippingAddress()+ "<br>" +
-                sender.getEmail() + "<br>" +
-                EmailSignatureConstants.TAGLINE +
-                "</p>" +
-                
-                "<p style='color:red; font-weight:bold;'>" +
-                EmailSignatureConstants.DISCLAIMER +
-                "</p>";
-            
+					"<p style='color:#1f4fd8; font-weight:bold;'>" + sender.getFullName() + "<br>"
+					+ sender.getRoleName() + "<br>" + sender.getCompanyName() + "<br>" + invoice.getShippingAddress()
+					+ "<br>" + sender.getEmail() + "<br>" + EmailSignatureConstants.TAGLINE + "</p>" +
 
-            //  Send as HTML
-            helper.setText(htmlContent, true);
+					"<p style='color:red; font-weight:bold;'>" + EmailSignatureConstants.DISCLAIMER + "</p>";
 
-            mailSender.send(message);
+			// Send as HTML
+			helper.setText(htmlContent, true);
 
-            log.info(
-                "Overdue invoice email sent. Invoice={}, From={}, To={}",
-                invoice.getInvoiceNumber(),
-                sender.getEmail(),
-                invoice.getCustomerEmail()
-            );
+			mailSender.send(message);
 
-        } catch (Exception e) {
-            log.error("Failed to send overdue invoice email", e);
-            throw new RuntimeException("Email sending failed");
-        }
-    }
+			log.info("Overdue invoice email sent. Invoice={}, From={}, To={}", invoice.getInvoiceNumber(),
+					sender.getEmail(), invoice.getCustomerEmail());
+
+		} catch (Exception e) {
+			log.error("Failed to send overdue invoice email", e);
+			throw new RuntimeException("Email sending failed");
+		}
+	}
 }

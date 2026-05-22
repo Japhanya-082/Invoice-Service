@@ -28,103 +28,98 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Slice tests for {@link ManualInvoiceController1}.
  *
- * <p>Uses {@code @WebMvcTest} to load only the web layer.
- * All service and repository beans are replaced with Mockito mocks.
- * The security config permits all {@code /manual-invoice/**} requests so
- * no authentication header is required.
+ * <p>
+ * Uses {@code @WebMvcTest} to load only the web layer. All service and
+ * repository beans are replaced with Mockito mocks. The security config permits
+ * all {@code /manual-invoice/**} requests so no authentication header is
+ * required.
  */
 @WebMvcTest(ManualInvoiceController1.class)
 @AutoConfigureMockMvc(addFilters = false)
 class ManualInvoiceControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+	@Autowired
+	private MockMvc mockMvc;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+	@Autowired
+	private ObjectMapper objectMapper;
 
-    // --- All beans that the controller @Autowires ---
+	// --- All beans that the controller @Autowires ---
 
-    @MockBean
-    private ManualInvoiceServiceImpl1 serviceImpl1;
+	@MockBean
+	private ManualInvoiceServiceImpl1 serviceImpl1;
 
-    @MockBean
-    private ManualInvoiceRepository manualInvoiceRepository;
+	@MockBean
+	private ManualInvoiceRepository manualInvoiceRepository;
 
-    @MockBean
-    private VendorClientService vendorClientService;
+	@MockBean
+	private VendorClientService vendorClientService;
 
-    @MockBean
-    private VendorFeignClient vendorFeignClient;
+	@MockBean
+	private VendorFeignClient vendorFeignClient;
 
-    @MockBean
-    private InvoiceRepository invoiceRepository;
+	@MockBean
+	private InvoiceRepository invoiceRepository;
 
-    // =========================================================
-    // 1. getInvoiceById_notFound_returns404
-    //    The controller maps service exceptions to 500, but if the service
-    //    returns null the controller returns 404.  We simulate the null path.
-    // =========================================================
+	// =========================================================
+	// 1. getInvoiceById_notFound_returns404
+	// The controller maps service exceptions to 500, but if the service
+	// returns null the controller returns 404. We simulate the null path.
+	// =========================================================
 
-    @Test
-    void getInvoiceById_notFound_returns404() throws Exception {
-        // Service returns null → controller sends 404
-        when(serviceImpl1.getInvoiceById(999L)).thenReturn(null);
+	@Test
+	void getInvoiceById_notFound_returns404() throws Exception {
+		// Service returns null → controller sends 404
+		when(serviceImpl1.getInvoiceById(999L)).thenReturn(null);
 
-        mockMvc.perform(get("/manual-invoice/999"))
-                .andExpect(status().isNotFound());
-    }
+		mockMvc.perform(get("/manual-invoice/999")).andExpect(status().isNotFound());
+	}
 
-    // =========================================================
-    // 2. deleteInvoice_success_returns200
-    // =========================================================
+	// =========================================================
+	// 2. deleteInvoice_success_returns200
+	// =========================================================
 
-    @Test
-    void deleteInvoice_success_returns200() throws Exception {
-        doNothing().when(serviceImpl1).deleteInvoice(1L, 1L);
+	@Test
+	void deleteInvoice_success_returns200() throws Exception {
+		doNothing().when(serviceImpl1).deleteInvoice(1L, 1L);
 
-        mockMvc.perform(delete("/manual-invoice/1")
-                        .param("adminId", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("Success"));
-    }
+		mockMvc.perform(delete("/manual-invoice/1").param("adminId", "1")).andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("Success"));
+	}
 
-    // =========================================================
-    // 3. getAll_returns200
-    // =========================================================
+	// =========================================================
+	// 3. getAll_returns200
+	// =========================================================
 
-    @Test
-    void getAll_returns200() throws Exception {
-        when(serviceImpl1.getAllInvoices(1L)).thenReturn(Collections.emptyList());
+	@Test
+	void getAll_returns200() throws Exception {
+		when(serviceImpl1.getAllInvoices(1L)).thenReturn(Collections.emptyList());
 
-        mockMvc.perform(get("/manual-invoice/getall")
-                        .param("adminId", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("Success"));
-    }
+		mockMvc.perform(get("/manual-invoice/getall").param("adminId", "1")).andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("Success"));
+	}
 
-    // =========================================================
-    // 4. saveInvoice_invalidPayload_returns400
-    //    The controller's /save endpoint catches all exceptions and returns
-    //    400 BAD_REQUEST.  We simulate a RuntimeException from the service.
-    // =========================================================
+	// =========================================================
+	// 4. saveInvoice_invalidPayload_returns400
+	// The controller's /save endpoint catches all exceptions and returns
+	// 400 BAD_REQUEST. We simulate a RuntimeException from the service.
+	// =========================================================
 
-    @Test
-    void saveInvoice_invalidPayload_returns400() throws Exception {
-        // Payload that causes an exception inside the controller (missing required items)
-        when(serviceImpl1.saveInvoice(any(ManualInvoice.class)))
-                .thenThrow(new RuntimeException("Vendor not found for customer: Unknown"));
+	@Test
+	void saveInvoice_invalidPayload_returns400() throws Exception {
+		// Payload that causes an exception inside the controller (missing required
+		// items)
+		when(serviceImpl1.saveInvoice(any(ManualInvoice.class)))
+				.thenThrow(new RuntimeException("Vendor not found for customer: Unknown"));
 
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("customer", "Unknown");
-        payload.put("adminId", 1);
-        payload.put("consultantId", 1);
-        payload.put("items", Collections.emptyList());
+		Map<String, Object> payload = new HashMap<>();
+		payload.put("customer", "Unknown");
+		payload.put("adminId", 1);
+		payload.put("consultantId", 1);
+		payload.put("items", Collections.emptyList());
 
-        mockMvc.perform(post("/manual-invoice/save")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(payload)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value("Error"));
-    }
+		mockMvc.perform(post("/manual-invoice/save").contentType(MediaType.APPLICATION_JSON)
+				.content(objectMapper.writeValueAsString(payload))).andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.status").value("Error"));
+	}
 }

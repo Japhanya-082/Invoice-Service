@@ -12,13 +12,12 @@ import com.invoice.service.VendorClientService;
 @Service
 public class VendorClientServiceImpl implements VendorClientService {
 
-    @Autowired
-    private VendorFeignClient vendorFeignClient;
+	@Autowired
+	private VendorFeignClient vendorFeignClient;
 
-    @Override
-    public List<VendorDTO> fetchVendorByName(String name) {
-        return vendorFeignClient.searchVendors(name);
-    }
+	@Override
+	public List<VendorDTO> fetchVendorByName(String name) {
+		return vendorFeignClient.searchVendors(name);
+	}
 
 }
-

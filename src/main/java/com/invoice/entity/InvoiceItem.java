@@ -30,6 +30,7 @@ public class InvoiceItem {
 	@NotNull(message = "Rate is required")
 	private Double rate = 0.0;
 
+	
 	// Calculated in service
 	private Double amount = 0.0;
 
@@ -38,6 +39,5 @@ public class InvoiceItem {
 	@JsonBackReference
 	private ManualInvoice manualInvoice;
 	
-	
-	
+
 }

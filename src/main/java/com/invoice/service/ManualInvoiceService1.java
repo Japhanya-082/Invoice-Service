@@ -60,10 +60,12 @@ public interface ManualInvoiceService1 {
 	public Page<ManualInvoice> getPendingInvoicesByAdmin(InvoiceSortingRequestDTO requestDTO);
 
 	public Page<ManualInvoice> getInvoicesByAdminAndVendorType(InvoiceSortingRequestDTO requestDTO);
+	
 
 	public void sendInvoiceMails(String invoiceNumber, Long adminId);
 
 	public Page<ManualInvoice> getInvoiceByAdminAndVendorType(InvoiceSortingRequestDTO requestDTO);
+	
 
 	public Page<ManualInvoice> getInvoicesByAdminAndVendorTypestatus(InvoiceSortingRequestDTO requestDTO);
 
@@ -75,4 +77,5 @@ public interface ManualInvoiceService1 {
 
 	public ResponseEntity<Boolean> checkEmploymentInvoices(Long employmentId);
 	
+
 }

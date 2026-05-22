@@ -9,7 +9,7 @@ import com.invoice.DTO.ConsultantDTO;
 @FeignClient(name = "consultant-service", url = "http://localhost:5679")
 public interface ConsultantFeignClient {
 
-    @GetMapping("/con/{id}")
-    ConsultantDTO getConsultant(@PathVariable("id") Long id);
+	@GetMapping("/con/{id}")
+	ConsultantDTO getConsultant(@PathVariable("id") Long id);
 
 }

@@ -16,4 +16,6 @@ public final class EmailSignatureConstants {
 			+ "WARNING: Computer viruses can be transmitted via email. The recipient should check this email "
 			+ "and any attachments for the presence of viruses. The company accepts no liability for any damage "
 			+ "caused by any virus transmitted by this email.";
+
 }
+

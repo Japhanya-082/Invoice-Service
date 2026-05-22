@@ -16,4 +16,5 @@ public class VendorDTO {
 	private VendorAddressDTO vendorAddress;
 	private Long adminId;
 	private String vendorType;
+	
 }

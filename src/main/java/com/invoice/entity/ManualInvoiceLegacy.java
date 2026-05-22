@@ -13,59 +13,57 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ManualInvoiceLegacy {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @Column(name = "invoice_number", unique = true)
-    private String invoiceNumber;
+	@Column(name = "invoice_number", unique = true)
+	private String invoiceNumber;
 
-    private String customer;
-    private String customerEmail;
-    private String customerPhone;
+	private String customer;
+	private String customerEmail;
+	private String customerPhone;
+	private String status;
+	private String currency;
+	private String paymentTerms;
+	private String notes;
+	private String template;
+	@Column(name = "invoice_date")
+	private LocalDate invoiceDate;
 
-    private String status;
-    private String currency;
-    private String paymentTerms;
-    private String notes;
-    private String template;
+	@Column(name = "due_date")
+	private LocalDate dueDate;
 
-    @Column(name = "invoice_date")
-    private LocalDate invoiceDate;
+	@Column(name = "po_number")
+	private String poNumber;
 
-    @Column(name = "due_date")
-    private LocalDate dueDate;
+	private Double subtotal = 0.0;
+	private Double tax = 0.0;
+	private Double total = 0.0;
+	private Double credit = 0.0;
 
-    @Column(name = "po_number")
-    private String poNumber;
+	@Column(name = "amount_due")
+	private Double amountDue = 0.0;
 
-    private Double subtotal = 0.0;
-    private Double tax = 0.0;
-    private Double total = 0.0;
-    private Double credit = 0.0;
+	@Column(name = "admin_id")
+	private Long adminId;
 
-    @Column(name = "amount_due")
-    private Double amountDue = 0.0;
+	@Column(name = "consultant_id")
+	private Long consultantId;
 
-    @Column(name = "admin_id")
-    private Long adminId;
+	@Column(name = "created_at")
+	private LocalDateTime createdAt;
 
-    @Column(name = "consultant_id")
-    private Long consultantId;
+	@Column(name = "updated_at")
+	private LocalDateTime updatedAt;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
+	@PrePersist
+	public void prePersist() {
+		this.createdAt = LocalDateTime.now();
+	}
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    public void prePersist() {
-        this.createdAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    public void preUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
+	@PreUpdate
+	public void preUpdate() {
+		this.updatedAt = LocalDateTime.now();
+	}
 }

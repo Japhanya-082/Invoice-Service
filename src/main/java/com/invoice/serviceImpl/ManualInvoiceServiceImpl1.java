@@ -61,7 +61,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	@Autowired
 	private InvoiceEmailService invoiceEmailService;
-	
+
 	@Override
 	@Transactional
 	public ManualInvoice saveInvoice(ManualInvoice request) {
@@ -864,7 +864,8 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 			pageSize = 10;
 
 		sortBy = resolveSortField(sortBy);
-		if (sortDir == null || sortDir.trim().isEmpty()) sortDir = "desc";
+		if (sortDir == null || sortDir.trim().isEmpty())
+			sortDir = "desc";
 
 		Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
 		Pageable pageable = PageRequest.of(zeroBasedPageNo, pageSize, Sort.by(direction, sortBy));
@@ -985,7 +986,8 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 			pageSize = 10;
 
 		sortBy = resolveSortField(sortBy);
-		if (sortDir == null || sortDir.trim().isEmpty()) sortDir = "desc";
+		if (sortDir == null || sortDir.trim().isEmpty())
+			sortDir = "desc";
 
 		Sort.Direction direction = sortDir.equalsIgnoreCase("desc") ? Sort.Direction.DESC : Sort.Direction.ASC;
 		Pageable pageable = PageRequest.of(zeroBasedPageNo, pageSize, Sort.by(direction, sortBy));
@@ -1008,49 +1010,60 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		return invoiceRepository.findByAdminIdAndVendorTypeIgnoreCase(adminId, vendorType, pageable);
 	}
 
-	
 	private String resolveSortField(String sortBy) {
 		if (sortBy == null || sortBy.trim().isEmpty()) {
 			return "invoiceDate";
 		}
 		switch (sortBy.toLowerCase()) {
-		case "consultantname":   return "consultantName";
-		case "customer":         return "customer";
-		case "invoicenumber":    return "invoiceNumber";
-		case "invoicedate":      return "invoiceDate";
-		case "duedate":          return "dueDate";
-		case "paymentdate":      return "paymentDate";
-		case "paymentamount":    return "paymentAmount";
-		case "paidamount":       return "paidAmount";
-		case "paiddate":         return "paidDate";
-		case "vendortype":       return "vendorType";
-		case "status":           return "status";
-		case "total":            return "total";
-		case "totalhours":       return "totalHours";
-		default:                 return "invoiceDate";
+		case "consultantname":
+			return "consultantName";
+		case "customer":
+			return "customer";
+		case "invoicenumber":
+			return "invoiceNumber";
+		case "invoicedate":
+			return "invoiceDate";
+		case "duedate":
+			return "dueDate";
+		case "paymentdate":
+			return "paymentDate";
+		case "paymentamount":
+			return "paymentAmount";
+		case "paidamount":
+			return "paidAmount";
+		case "paiddate":
+			return "paidDate";
+		case "vendortype":
+			return "vendorType";
+		case "status":
+			return "status";
+		case "total":
+			return "total";
+		case "totalhours":
+			return "totalHours";
+		default:
+			return "invoiceDate";
 		}
 	}
 
 	@Override
 	public Map<String, Object> getInvoiceStatusCounts(Long adminId) {
-	    Object[] result = (Object[]) invoiceRepository.getInvoiceStatusCounts(adminId);
-	    Map<String, Object> data = new LinkedHashMap<>();
-	    data.put("pendingCount", ((Number) result[1]).intValue());
-	    data.put("adminId", adminId);
-	    data.put("paidCount", ((Number) result[0]).intValue());
-	    data.put("receivedCount", ((Number) result[2]).intValue());
-	    data.put("totalCount", ((Number) result[3]).intValue());
-	    return data;
+		Object[] result = (Object[]) invoiceRepository.getInvoiceStatusCounts(adminId);
+		Map<String, Object> data = new LinkedHashMap<>();
+		data.put("pendingCount", ((Number) result[1]).intValue());
+		data.put("adminId", adminId);
+		data.put("paidCount", ((Number) result[0]).intValue());
+		data.put("receivedCount", ((Number) result[2]).intValue());
+		data.put("totalCount", ((Number) result[3]).intValue());
+		return data;
 	}
-	
+
 	@Override
-    public ResponseEntity<Boolean> checkEmploymentInvoices(
-            Long employmentId) {
+	public ResponseEntity<Boolean> checkEmploymentInvoices(Long employmentId) {
 
-        boolean exists =
-                invoiceRepository.existsByEmploymentId(employmentId);
+		boolean exists = invoiceRepository.existsByEmploymentId(employmentId);
 
-        return ResponseEntity.ok(exists);
-    }
-	
+		return ResponseEntity.ok(exists);
+	}
+
 }

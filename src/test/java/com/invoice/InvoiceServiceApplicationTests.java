@@ -12,3 +12,4 @@ class InvoiceServiceApplicationTests {
     void contextLoads() {
     }
 }
+
