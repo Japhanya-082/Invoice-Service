@@ -277,7 +277,9 @@ public class InvoiceServiceImpl implements InvoiceService {
     /** Image Parsing using Tesseract */
     public Invoice parseImageToInvoice(File file, String fileName) throws TesseractException {
         Tesseract tesseract = new Tesseract();
-        tesseract.setDatapath(new File("src/main/resources/tessdata").getAbsolutePath());
+        tesseract.setDatapath(new File(getClass().getClassLoader().getResource("tessdata") != null
+            ? getClass().getClassLoader().getResource("tessdata").getPath().replace("tessdata", "")
+            : "src/main/resources").getAbsolutePath());
         tesseract.setLanguage("eng");
 
         String text = tesseract.doOCR(file);

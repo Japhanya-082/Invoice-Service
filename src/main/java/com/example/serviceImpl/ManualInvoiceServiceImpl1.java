@@ -44,6 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
+@org.springframework.transaction.annotation.Transactional
 public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	@Value("${file.upload-dir}")
@@ -359,11 +360,11 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 					File file = new File(uploadDir, fileName);
 
 					if (file.exists() && !file.delete()) {
-						System.err.println("⚠️ Failed to delete file: " + fileName);
+						log.warn("Failed to delete file: {}", fileName);
 					}
 
 				} catch (Exception e) {
-					System.err.println("⚠️ File delete error: " + e.getMessage());
+					log.warn("File delete error: {}", e.getMessage());
 				}
 			}
 		}
@@ -766,7 +767,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	public void sendInvoiceMail(String invoiceNumber, Long adminId) {
 
-		System.out.println("Sending invoice mail to: " + invoiceNumber);
+		log.info("Sending invoice mail for invoice: {}", invoiceNumber);
 
 		ManualInvoice invoice = invoiceRepository.findByInvoiceNumberAndAdminId(invoiceNumber, adminId)
 				.orElseThrow(() -> new RuntimeException("Invoice not found or unauthorized access"));

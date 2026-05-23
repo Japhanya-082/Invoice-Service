@@ -2,6 +2,8 @@ package com.example.controller;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +20,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/invoice")
 public class InvoiceController {
+
+    private static final Logger log = LoggerFactory.getLogger(InvoiceController.class);
 
     @Autowired
     private InvoiceServiceImpl invoiceServiceImpl;
@@ -39,9 +43,9 @@ public class InvoiceController {
             response.put("data", invoices); // return saved invoices
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            e.printStackTrace(); // log the actual exception
+            log.error("Error: {}", e.getMessage(), e);
             response.put("success", false);
-            response.put("error", "Error processing file: " + e.getMessage());
+            response.put("error", "An internal error occurred");
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
         }
     }
@@ -55,9 +59,9 @@ public class InvoiceController {
             response.put("data", invoices);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error: {}", e.getMessage(), e);
             response.put("success", false);
-            response.put("error", "Failed to fetch invoices: " + e.getMessage());
+            response.put("error", "An internal error occurred");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }

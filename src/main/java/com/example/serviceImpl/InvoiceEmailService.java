@@ -12,8 +12,10 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 
 import jakarta.mail.internet.MimeMessage;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class InvoiceEmailService {
 
 	@Autowired
@@ -126,10 +128,10 @@ public class InvoiceEmailService {
 
 			mailSender.send(message);
 
-			System.out.println("Invoice mail sent successfully to: " + toMail);
+			log.info("Invoice mail sent successfully to: {}", toMail);
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			log.error("Failed to send invoice mail to: {}", toMail, e);
 		}
 	}
 }
