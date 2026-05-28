@@ -170,7 +170,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		invoice.setPaidDate(request.getPaidDate());
 		invoice.setPaidAmount(request.getPaidAmount());
 		invoice.setPeriod(request.getPeriod());
-
+        invoice.setEmploymentId(request.getEmploymentId());
 		// ===== Vendor Lookup =====
 		if (request.getCustomer() != null && !request.getCustomer().isBlank()) {
 
@@ -581,6 +581,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		invoice.setPaidAmount(request.getPaidAmount());
 		invoice.setVendorType(request.getVendorType());
 		invoice.setPeriod(request.getPeriod());
+		invoice.setEmploymentId(request.getEmploymentId());
 		// ===== Update Items =====
 		invoice.clearItems();
 

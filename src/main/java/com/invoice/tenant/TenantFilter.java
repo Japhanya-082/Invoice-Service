@@ -31,6 +31,7 @@ public class TenantFilter implements Filter {
 			throws IOException, ServletException {
 		HttpServletRequest httpRequest = (HttpServletRequest) request;
 		String authHeader = httpRequest.getHeader("Authorization");
+		boolean tenantResolved = false;
 		try {
 			if (authHeader != null && authHeader.startsWith("Bearer ")) {
 				String token = authHeader.substring(7).trim();
@@ -38,11 +39,29 @@ public class TenantFilter implements Filter {
 				String companyDomain = (String) claims.get("companyDomain");
 				if (companyDomain != null && !companyDomain.isBlank()) {
 					TenantContext.setCurrentTenant(TenantContext.toSchemaName(companyDomain));
+					tenantResolved = true;
 				}
 			}
 		} catch (Exception e) {
-			log.debug("Tenant extraction skipped: {}", e.getMessage());
+			log.debug("Tenant extraction from JWT skipped: {}", e.getMessage());
 		}
+
+		// Fallback: honour X-Tenant-Id / X-Company-Domain when JWT didn't set tenant.
+		// Used by service-to-service Feign calls (e.g. Reports-Service) that already
+		// resolved the tenant upstream.
+		if (!tenantResolved) {
+			String tenantHeader = httpRequest.getHeader("X-Tenant-Id");
+			if (tenantHeader != null && !tenantHeader.isBlank()) {
+				TenantContext.setCurrentTenant(tenantHeader.trim());
+				tenantResolved = true;
+			} else {
+				String companyHeader = httpRequest.getHeader("X-Company-Domain");
+				if (companyHeader != null && !companyHeader.isBlank()) {
+					TenantContext.setCurrentTenant(TenantContext.toSchemaName(companyHeader.trim()));
+				}
+			}
+		}
+
 		try {
 			chain.doFilter(request, response);
 		} finally {
