@@ -183,6 +183,7 @@
 	</dependencyManagement>
 
 	<build>
+		 <finalName>invoiceservice</finalName>
 		<plugins>
 			<!-- Compiler Plugin -->
 			<plugin>
