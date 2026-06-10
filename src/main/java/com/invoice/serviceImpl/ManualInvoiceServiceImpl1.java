@@ -3,6 +3,8 @@ package com.invoice.serviceImpl;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -89,6 +91,11 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 			invoice.clearItems();
 
+			if (request.getItems() != null) {
+			    for (InvoiceItem item : request.getItems()) {
+			        item.setManualInvoice(invoice); // parent mapping
+			        invoice.getItems().add(item);
+			    }}
 		} else {
 
 			// CREATE validation
@@ -171,6 +178,10 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		invoice.setPaidAmount(request.getPaidAmount());
 		invoice.setPeriod(request.getPeriod());
         invoice.setEmploymentId(request.getEmploymentId());
+		// Financial totals are computed by the frontend and sent in the payload
+		invoice.setSubtotal(request.getSubtotal());
+		invoice.setTotal(request.getTotal());
+		invoice.setTotalHours(request.getTotalHours());
 		// ===== Vendor Lookup =====
 		if (request.getCustomer() != null && !request.getCustomer().isBlank()) {
 
@@ -209,6 +220,8 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		}
 
 		// ===== Calculations =====
+		// Recompute item amounts (hours * rate) and subtotal/total from items.
+		// dueAmount is set from the request above and is not touched here.
 		calculateTotalsAndDueDate(invoice);
 
 		invoice.setUpdatedAt(LocalDateTime.now());
@@ -230,7 +243,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 				invoice.setInvoiceNumber("INV-" + year + consultant + invoiceId);
 			}
-
+			
 			return invoiceRepository.save(invoice);
 
 		} catch (org.springframework.dao.DataIntegrityViolationException e) {
@@ -251,31 +264,31 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	private void calculateTotalsAndDueDate(ManualInvoice invoice) {
 
-		double subtotal = 0.0;
-		double totalHours = 0.0;
+		BigDecimal subtotal = BigDecimal.ZERO;
+		BigDecimal totalHours = BigDecimal.ZERO;
 
 		if (invoice.getItems() != null) {
 			for (InvoiceItem item : invoice.getItems()) {
 
-				double hours = item.getHours() != null ? item.getHours() : 0.0;
-				double rate = item.getRate() != null ? item.getRate() : 0.0;
+				BigDecimal hours = item.getHours() != null ? item.getHours() : BigDecimal.ZERO;
+				BigDecimal rate = item.getRate() != null ? item.getRate() : BigDecimal.ZERO;
 
-				double amount = hours * rate;
+				BigDecimal amount = hours.multiply(rate).setScale(4, RoundingMode.HALF_UP);
 				item.setAmount(amount);
 
-				subtotal += amount;
-				totalHours += hours;
+				subtotal = subtotal.add(amount);
+				totalHours = totalHours.add(hours);
 			}
 		}
 
-		invoice.setSubtotal(subtotal);
-		invoice.setTotalHours(totalHours);
+		invoice.setSubtotal(subtotal.setScale(4, RoundingMode.HALF_UP));
+		invoice.setTotalHours(totalHours.setScale(4, RoundingMode.HALF_UP));
 
-		double tax = invoice.getTax() != null ? invoice.getTax() : 0.0;
-		invoice.setTotal(subtotal + tax);
+		BigDecimal tax = invoice.getTax() != null ? invoice.getTax() : BigDecimal.ZERO;
+		invoice.setTotal(subtotal.add(tax).setScale(4, RoundingMode.HALF_UP));
 
-		double credit = invoice.getCredit() != null ? invoice.getCredit() : 0.0;
-		invoice.setAmountDue(invoice.getTotal() - credit);
+		BigDecimal credit = invoice.getCredit() != null ? invoice.getCredit() : BigDecimal.ZERO;
+		invoice.setAmountDue(invoice.getTotal().subtract(credit).setScale(4, RoundingMode.HALF_UP));
 
 	}
 
@@ -402,7 +415,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		existingInvoice.setPoNumber(poNumber);
 		existingInvoice.setTemplate(request.getTemplate());
 		existingInvoice.setTermsAndConditions(request.getTermsAndConditions());
-		existingInvoice.setStatus(request.getStatus());
+		existingInvoice.setStatus(normalizeStatusForDb(request.getStatus(), existingInvoice.getStatus()));
 		existingInvoice.setCurrency(request.getCurrency());
 
 		// 6️⃣ Vendor enrichment via Feign
@@ -520,6 +533,55 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		return new UrlResource(file.toURI());
 	}
 
+	/** Statuses permitted by the DB check constraint ck_manual_invoices_status. */
+	private static final java.util.Set<String> ALLOWED_DB_STATUSES = java.util.Set.of(
+			
+			        "DRAFT",
+			        "PENDING",
+			        "RECEIVED",
+			        "PARTIALLY_RECEIVED",
+			        "PARTIALLY_PAID",
+			        "PAID",
+			        "OVERDUE",
+			        "CANCELLED",
+			        "EXCESS_RECEIVED",
+			        "EXCESS_PAID"
+			);
+	/**
+	 * Converts a UI status (e.g. "Pending", "Partially Paid") to the DB enum form
+	 * (UPPERCASE_UNDERSCORE) required by ck_manual_invoices_status. If the requested
+	 * value is blank or not a recognized DB status, the existing value is kept so the
+	 * update can't violate the constraint.
+	 */
+//	private String normalizeStatusForDb(String requested, String fallback) {
+//		if (requested == null || requested.isBlank()) {
+//			return fallback;
+//		}
+//		String normalized = requested.trim().toUpperCase().replaceAll("\\s+", "_");
+//		if (ALLOWED_DB_STATUSES.contains(normalized)) {
+//			return normalized;
+//		}
+//		return fallback != null ? fallback : "PENDING";
+//	}
+	
+	private String normalizeStatusForDb(String requested, String fallback) {
+	    if (requested == null || requested.isBlank()) {
+	        return fallback;
+	    }
+
+	    String normalized = requested.trim()
+	                                 .toUpperCase()
+	                                 .replaceAll("\\s+", "_");
+
+	    if ("SENT".equals(normalized)) {
+	        normalized = "PENDING";
+	    }
+
+	    return ALLOWED_DB_STATUSES.contains(normalized)
+	            ? normalized
+	            : (fallback != null ? fallback : "PENDING");
+	}
+
 	@Override
 	@Transactional
 	public ManualInvoice updateManualInvoice(Long id, ManualInvoice request) {
@@ -560,7 +622,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		invoice.setPoNumber(request.getPoNumber());
 		invoice.setTemplate(request.getTemplate());
 		invoice.setTermsAndConditions(request.getTermsAndConditions());
-		invoice.setStatus(request.getStatus());
+		invoice.setStatus(normalizeStatusForDb(request.getStatus(), invoice.getStatus()));
 		invoice.setCurrency(request.getCurrency());
 
 		// ===== New Fields =====
@@ -799,7 +861,8 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 				throw new RuntimeException("No valid email addresses found");
 			}
 			invoiceEmailService.sendInvoiceMail(emails, invoice);
-			invoice.setStatus("Pending");
+			// Must match ck_manual_invoices_status (uppercase enum), not title case.
+			invoice.setStatus("PENDING");
 			invoiceRepository.save(invoice);
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to send invoice mail: " + e.getMessage());
@@ -909,6 +972,22 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		return invoiceRepository.findByAdminId(adminId, pageable);
 	}
 
+	/**
+	 * Maps AR receivable status labels to the status actually stored on the invoice.
+	 * "Received" → "Paid", "Partially Received" → "Partially Paid",
+	 * "Excess Received" → "Excess Paid". Other values pass through unchanged. The
+	 * downstream queries compare with LOWER(...), so the returned casing doesn't matter.
+	 */
+	private String mapReceivableStatusToStored(String status) {
+		// Statuses are stored exactly as the frontend sends them (title case, e.g.
+		// "Partially Received"), and AR uses received-side labels while AP uses paid-side.
+		// No folding/format change — the query compares case-insensitively.
+		if (status == null || status.isBlank()) {
+			return null;
+		}
+		return status.trim();
+	}
+
 	@Override
 	public Page<ManualInvoice> getInvoiceByAdminAndVendorTypereceivablestatus(InvoiceSortingRequestDTO requestDTO) {
 		String search = requestDTO.getSearch();
@@ -919,12 +998,18 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		Long adminId = requestDTO.getAdminId();
 
 		// ✅ ALWAYS RECEIVABLE
-		String vendorType = "Receivable";
+		String vendorType = "receivable";
 
 		// ✅ FIX: treat empty status as null
 		String status = (requestDTO.getStatus() != null && !requestDTO.getStatus().trim().isEmpty())
 				? requestDTO.getStatus().trim()
 				: null;
+
+		// Receivable invoices are stored with the payment statuses (PAID / PARTIALLY_PAID),
+		// while the AR UI labels them "Received" / "Partially Received". Translate the UI
+		// label to the stored status (and DB enum format) so the tab matches rows.
+		status = mapReceivableStatusToStored(status);
+
 
 		// ✅ Pagination
 		if (pageNo == null || pageNo < 0)

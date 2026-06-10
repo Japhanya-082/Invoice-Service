@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.invoice.common.RestAPIResponse;
 import com.invoice.entity.Invoice;
 import com.invoice.serviceImpl.InvoiceServiceImpl;
+import com.invoice.tenant.SecurityUtils;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -52,6 +53,9 @@ public class InvoiceController {
 	public ResponseEntity<Map<String, Object>> getAllInvoices() {
 		Map<String, Object> response = new HashMap<>();
 		try {
+			// Require an authenticated tenant; Invoice entity has no adminId
+			// column to filter on, but unauthenticated callers are rejected here.
+			SecurityUtils.getCurrentAdminId();
 			List<Invoice> invoices = invoiceServiceImpl.getAll();
 			response.put("success", true);
 			response.put("data", invoices);

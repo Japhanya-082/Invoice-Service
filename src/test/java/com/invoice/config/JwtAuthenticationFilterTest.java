@@ -56,9 +56,12 @@ class JwtAuthenticationFilterTest {
 		return Keys.hmacShaKeyFor(TEST_SECRET.getBytes(StandardCharsets.UTF_8));
 	}
 
-	/** Build a valid, non-expired JWT containing a companyDomain claim. */
+	/** Build a valid, non-expired JWT containing a companyDomain and adminId claim. */
 	private String buildValidToken(String companyDomain) {
-		return Jwts.builder().setSubject("testuser").claim("companyDomain", companyDomain).setIssuedAt(new Date())
+		return Jwts.builder().setSubject("testuser")
+				.claim("companyDomain", companyDomain)
+				.claim("adminId", 1)
+				.setIssuedAt(new Date())
 				.setExpiration(new Date(System.currentTimeMillis() + 3_600_000L))
 				.signWith(signingKey(), SignatureAlgorithm.HS256).compact();
 	}

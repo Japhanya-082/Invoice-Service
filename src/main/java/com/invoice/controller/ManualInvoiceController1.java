@@ -41,6 +41,7 @@ import com.invoice.repository.InvoiceRepository;
 import com.invoice.repository.ManualInvoiceRepository;
 import com.invoice.service.VendorClientService;
 import com.invoice.serviceImpl.ManualInvoiceServiceImpl1;
+import com.invoice.tenant.SecurityUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
@@ -73,8 +74,13 @@ public class ManualInvoiceController1 {
 	public ResponseEntity<RestAPIResponse> saveInvoice(@RequestBody Map<String, Object> payload) {
 
 		try {
+			Long authAdminId = SecurityUtils.getCurrentAdminId();
 			ManualInvoice invoice = objectMapper.convertValue(payload, ManualInvoice.class);
-
+			invoice.setAdminId(authAdminId);
+			
+			System.err.println(invoice.getItems());
+			System.err.println(invoice.getItems() == null ? "null" : invoice.getItems().size());
+			
 			// FIX frontend bug: id = ""
 			if (payload.get("id") == null || payload.get("id").toString().isBlank()) {
 				invoice.setId(null);
@@ -109,14 +115,14 @@ public class ManualInvoiceController1 {
 					item.setId(null);
 					item.setName((String) m.get("name"));
 					item.setDescription((String) m.get("description"));
-					item.setHours(Double.valueOf(m.get("hours").toString()));
-					item.setRate(Double.valueOf(m.get("rate").toString()));
+					item.setHours(new java.math.BigDecimal(m.get("hours").toString()));
+					item.setRate(new java.math.BigDecimal(m.get("rate").toString()));
 					items.add(item);
 				}
 			}
 
 			invoice.setItems(items);
-
+	
 			ManualInvoice saved = serviceImpl1.saveInvoice(invoice);
 
 			return ResponseEntity.ok(new RestAPIResponse("Success", "Invoice saved successfully", saved));
@@ -134,9 +140,10 @@ public class ManualInvoiceController1 {
 
 	@GetMapping("/exists/{poNumber}")
 	public ResponseEntity<Map<String, Object>> checkPoNumberDuplicate(@PathVariable String poNumber,
-			@RequestParam(required = false) Long invoiceId, @RequestParam Long adminId) {
+			@RequestParam(required = false) Long invoiceId, @RequestParam(required = false) Long adminId) {
 
-		boolean exists = serviceImpl1.isPoNumberDuplicate(poNumber, invoiceId, adminId);
+		Long authAdminId = SecurityUtils.getCurrentAdminId();
+		boolean exists = serviceImpl1.isPoNumberDuplicate(poNumber, invoiceId, authAdminId);
 
 		Map<String, Object> response = new HashMap<>();
 		response.put("field", "poNumber");
@@ -149,7 +156,8 @@ public class ManualInvoiceController1 {
 
 	@GetMapping("/invoices/count-by-vendor/{vendorId}")
 	public ResponseEntity<Long> countInvoicesByVendor(@PathVariable Long vendorId) {
-		long count = manualInvoiceRepository.countByCustomerVendorId(vendorId);
+		Long authAdminId = SecurityUtils.getCurrentAdminId();
+		long count = manualInvoiceRepository.findByCustomerVendorIdAndAdminId(vendorId, authAdminId).size();
 		return ResponseEntity.ok(count);
 	}
 
@@ -249,8 +257,9 @@ public class ManualInvoiceController1 {
 	@GetMapping("/getall")
 	public ResponseEntity<RestAPIResponse> getAllInvoices(@RequestParam Long adminId) {
 		try {
+			Long authAdminId = SecurityUtils.getCurrentAdminId();
 			return ResponseEntity
-					.ok(new RestAPIResponse("Success", "All Invoices Retrieved", serviceImpl1.getAllInvoices(adminId)));
+					.ok(new RestAPIResponse("Success", "All Invoices Retrieved", serviceImpl1.getAllInvoices(authAdminId)));
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new RestAPIResponse("Error", "Failed to retrieve invoices: " + e.getMessage(), null));
@@ -264,9 +273,13 @@ public class ManualInvoiceController1 {
 			@RequestParam Long adminId) {
 
 		try {
+			if (size > 100) size = 100;
+			if (size < 1) size = 20;
+			if (page < 0) page = 0;
 
+			Long authAdminId = SecurityUtils.getCurrentAdminId();
 			Page<ManualInvoice> invoicePage = serviceImpl1.getAllInvoicesWithPaginationAndSearch(page, size, sortField,
-					sortDir, keyword, adminId);
+					sortDir, keyword, authAdminId);
 
 			Map<String, Object> response = new HashMap<>();
 			response.put("invoices", invoicePage.getContent());
@@ -288,21 +301,40 @@ public class ManualInvoiceController1 {
 
 	@GetMapping("/count")
 	public ResponseEntity<RestAPIResponse> getInvoiceCounts() {
-		Map<String, Long> counts = serviceImpl1.getInvoiceCounts();
+		Long authAdminId = SecurityUtils.getCurrentAdminId();
+		List<ManualInvoice> tenantInvoices = manualInvoiceRepository.findByAdminId(authAdminId);
+		Map<String, Long> counts = new HashMap<>();
+		counts.put("total", (long) tenantInvoices.size());
+		counts.put("paid", tenantInvoices.stream()
+				.filter(i -> i.getStatus() != null && "paid".equalsIgnoreCase(i.getStatus())).count());
+		counts.put("pending", tenantInvoices.stream()
+				.filter(i -> i.getStatus() != null && "pending".equalsIgnoreCase(i.getStatus())).count());
+		counts.put("OverDue", tenantInvoices.stream()
+				.filter(i -> i.getStatus() != null && "overdue".equalsIgnoreCase(i.getStatus())).count());
 		return ResponseEntity.ok(new RestAPIResponse("success", "Invoice counts fetched", counts));
 	}
 
 	// ---------------- Today's overdue count ----------------
 	@GetMapping("/today-overdue-count")
 	public ResponseEntity<RestAPIResponse> getTodayOverdueCount() {
-		Long count = serviceImpl1.getTodayOverdueCount();
+		Long authAdminId = SecurityUtils.getCurrentAdminId();
+		java.time.LocalDate today = java.time.LocalDate.now();
+		long count = manualInvoiceRepository.findByAdminId(authAdminId).stream()
+				.filter(i -> i.getStatus() != null && "overdue".equalsIgnoreCase(i.getStatus()))
+				.filter(i -> today.equals(i.getDueDate()))
+				.count();
 		return ResponseEntity.ok(new RestAPIResponse("Success", "Today's overdue count fetched", count));
 	}
 
 	// ---------------- Today's overdue invoices for popup ----------------
 	@GetMapping("/today-overdue-invoices")
 	public ResponseEntity<RestAPIResponse> getTodayOverdueInvoices() {
-		List<ManualInvoice> invoices = serviceImpl1.getTodayOverdueInvoices();
+		Long authAdminId = SecurityUtils.getCurrentAdminId();
+		java.time.LocalDate today = java.time.LocalDate.now();
+		List<ManualInvoice> invoices = manualInvoiceRepository.findByAdminId(authAdminId).stream()
+				.filter(i -> i.getStatus() != null && "overdue".equalsIgnoreCase(i.getStatus()))
+				.filter(i -> today.equals(i.getDueDate()))
+				.collect(Collectors.toList());
 		return ResponseEntity.ok(new RestAPIResponse("Success", "Today's overdue invoices fetched", invoices));
 	}
 
@@ -325,6 +357,7 @@ public class ManualInvoiceController1 {
 	@PutMapping("/{id}")
 	public ResponseEntity<RestAPIResponse> updateInvoice(@PathVariable Long id, @RequestBody ManualInvoice invoice) {
 		try {
+			invoice.setAdminId(SecurityUtils.getCurrentAdminId());
 			ManualInvoice updatedInvoice = serviceImpl1.updateInvoice(id, invoice);
 			if (updatedInvoice == null) {
 				return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -341,6 +374,7 @@ public class ManualInvoiceController1 {
 	public ResponseEntity<RestAPIResponse> updateManualInvoice(@PathVariable Long id,
 			@RequestBody ManualInvoice invoice) {
 		try {
+			invoice.setAdminId(SecurityUtils.getCurrentAdminId());
 			ManualInvoice updatedInvoice = serviceImpl1.updateManualInvoice(id, invoice);
 			return ResponseEntity.ok(new RestAPIResponse("Success", "Invoice updated successfully", updatedInvoice));
 		} catch (RuntimeException e) {
@@ -354,6 +388,7 @@ public class ManualInvoiceController1 {
 	@PutMapping("/invoices/update-vendor")
 	public ResponseEntity<Void> updateInvoicesByVendor(@RequestBody VendorDTO vendorDTO) {
 
+		vendorDTO.setAdminId(SecurityUtils.getCurrentAdminId());
 		List<ManualInvoice> invoices = manualInvoiceRepository.findByCustomerVendorIdAndAdminId(vendorDTO.getVendorId(),
 				vendorDTO.getAdminId());
 
@@ -379,7 +414,8 @@ public class ManualInvoiceController1 {
 
 		try {
 
-			serviceImpl1.deleteInvoice(id, adminId);
+			Long authAdminId = SecurityUtils.getCurrentAdminId();
+			serviceImpl1.deleteInvoice(id, authAdminId);
 
 			return ResponseEntity.ok(new RestAPIResponse("Success", "Invoice Deleted Successfully", null));
 
@@ -392,7 +428,8 @@ public class ManualInvoiceController1 {
 
 	@GetMapping("/consultant/{consultantId}/exists")
 	public boolean hasInvoices(@PathVariable("consultantId") Long consultantId) {
-		return manualInvoiceRepository.existsByConsultantId(consultantId);
+		Long authAdminId = SecurityUtils.getCurrentAdminId();
+		return manualInvoiceRepository.existsByConsultantIdAndAdminId(consultantId, authAdminId);
 	}
 
 //	@GetMapping("/consultant/{consultantId}/exists")
@@ -405,7 +442,8 @@ public class ManualInvoiceController1 {
 	public ResponseEntity<RestAPIResponse> sendInvoiceMail(@PathVariable String invoiceNumber,
 			@RequestParam Long adminId) {
 		try {
-			serviceImpl1.sendInvoiceMail(invoiceNumber, adminId);
+			Long authAdminId = SecurityUtils.getCurrentAdminId();
+			serviceImpl1.sendInvoiceMail(invoiceNumber, authAdminId);
 			return ResponseEntity.ok(new RestAPIResponse("success", "Invoice mail sent successfully", null));
 		} catch (RuntimeException e) {
 			log.error("Failed to send invoice mail for {}", invoiceNumber, e);
@@ -423,7 +461,8 @@ public class ManualInvoiceController1 {
 	@GetMapping("/pending-invoices/{adminId}")
 	public ResponseEntity<RestAPIResponse> getPendingInvoices(@PathVariable Long adminId) {
 
-		List<ManualInvoice> invoices = serviceImpl1.getPendingInvoicesByAdmin(adminId);
+		Long authAdminId = SecurityUtils.getCurrentAdminId();
+		List<ManualInvoice> invoices = serviceImpl1.getPendingInvoicesByAdmin(authAdminId);
 
 		return ResponseEntity
 				.ok(new RestAPIResponse("Success", "Pending & Partially Paid invoices fetched successfully", invoices));
@@ -432,6 +471,7 @@ public class ManualInvoiceController1 {
 	@PostMapping("/pending-invoices/searchAndsorting")
 	public ResponseEntity<RestAPIResponse> getPendingInvoices(@RequestBody InvoiceSortingRequestDTO requestDTO) {
 
+		requestDTO.setAdminId(SecurityUtils.getCurrentAdminId());
 		Page<ManualInvoice> invoices = serviceImpl1.getPendingInvoicesByAdmin(requestDTO);
 
 		return ResponseEntity.ok(new RestAPIResponse("Success",
@@ -442,6 +482,7 @@ public class ManualInvoiceController1 {
 	public ResponseEntity<RestAPIResponse> getInvoicesByAdminAndVendorType(
 			@RequestBody InvoiceSortingRequestDTO requestDTO) {
 
+		requestDTO.setAdminId(SecurityUtils.getCurrentAdminId());
 		Page<ManualInvoice> invoices = serviceImpl1.getInvoicesByAdminAndVendorType(requestDTO);
 
 		return ResponseEntity
@@ -452,7 +493,8 @@ public class ManualInvoiceController1 {
 	public ResponseEntity<RestAPIResponse> sendInvoiceMails(@PathVariable String invoiceNumber,
 			@RequestParam Long adminId) {
 		try {
-			serviceImpl1.sendInvoiceMails(invoiceNumber, adminId);
+			Long authAdminId = SecurityUtils.getCurrentAdminId();
+			serviceImpl1.sendInvoiceMails(invoiceNumber, authAdminId);
 			return ResponseEntity.ok(new RestAPIResponse("success", "Invoice mail sent successfully", null));
 		} catch (RuntimeException e) {
 			return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -463,6 +505,7 @@ public class ManualInvoiceController1 {
 	@PostMapping("/vendortype-receivable/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoiceByAdminAndVendorType(
 			@RequestBody InvoiceSortingRequestDTO requestDTO) {
+		requestDTO.setAdminId(SecurityUtils.getCurrentAdminId());
 		Page<ManualInvoice> invoices = serviceImpl1.getInvoiceByAdminAndVendorType(requestDTO);
 		return ResponseEntity
 				.ok(new RestAPIResponse("Success", "Invoices fetched successfully", invoices.getContent()));
@@ -472,6 +515,7 @@ public class ManualInvoiceController1 {
 	public ResponseEntity<RestAPIResponse> getInvoiceByAdminAndVendorTypestatus(
 			@RequestBody InvoiceSortingRequestDTO requestDTO) {
 
+		requestDTO.setAdminId(SecurityUtils.getCurrentAdminId());
 		Page<ManualInvoice> invoices = serviceImpl1.getInvoiceByAdminAndVendorTypereceivablestatus(requestDTO);
 
 		Map<String, Object> responseData = new HashMap<>();
@@ -503,6 +547,7 @@ public class ManualInvoiceController1 {
 	public ResponseEntity<RestAPIResponse> getInvoicesByAdminAndVendorTypestatus(
 			@RequestBody InvoiceSortingRequestDTO requestDTO) {
 
+		requestDTO.setAdminId(SecurityUtils.getCurrentAdminId());
 		Page<ManualInvoice> invoices = serviceImpl1.getInvoicesByAdminAndVendorTypestatusinvoicestatus(requestDTO);
 
 		Map<String, Object> responseData = new HashMap<>();
@@ -531,7 +576,8 @@ public class ManualInvoiceController1 {
 
 	@GetMapping("/status-count/{adminId}")
 	public ResponseEntity<?> getInvoiceStatusCounts(@PathVariable Long adminId) {
-		Map<String, Object> data = serviceImpl1.getInvoiceStatusCounts(adminId);
+		Long authAdminId = SecurityUtils.getCurrentAdminId();
+		Map<String, Object> data = serviceImpl1.getInvoiceStatusCounts(authAdminId);
 		Map<String, Object> response = new LinkedHashMap<>();
 
 		response.put("message", "Invoice status counts fetched successfully");

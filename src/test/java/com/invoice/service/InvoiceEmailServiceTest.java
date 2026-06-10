@@ -12,6 +12,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
@@ -65,8 +66,8 @@ class InvoiceEmailServiceTest {
 		invoice.setConsultantName("John Doe");
 		invoice.setInvoiceDate(LocalDate.of(2026, 1, 1));
 		invoice.setDueDate(LocalDate.of(2026, 1, 31));
-		invoice.setTotal(2000.0);
-		invoice.setAmountDue(2000.0);
+		invoice.setTotal(new BigDecimal("2000.0"));
+		invoice.setAmountDue(new BigDecimal("2000.0"));
 		invoice.setCurrency("USD");
 		return invoice;
 	}
