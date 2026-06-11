@@ -70,11 +70,13 @@ public class InvoiceEmailService {
 					"<tr>" + "<td><b>Consultant</b></td>" + "<td>" + invoice.getConsultantName() + "</td>" + "</tr>" +
 
 					"<tr bgcolor='#f2f2f2'>" + "<td><b>Total Amount</b></td>"
-					+ "<td style='color:#27ae60;font-weight:bold;'>" + invoice.getTotal() + " " + invoice.getCurrency()
-					+ "</td>" + "</tr>" +
+					+ "<td style='color:#27ae60;font-weight:bold;'>"
+					+ (invoice.getTotal() == null ? "0" : invoice.getTotal().toPlainString()) + " "
+					+ invoice.getCurrency() + "</td>" + "</tr>" +
 
 					"<tr>" + "<td><b>Amount Due</b></td>" + "<td style='color:#e74c3c;font-weight:bold;'>"
-					+ invoice.getAmountDue() + "</td>" + "</tr>" +
+					+ (invoice.getAmountDue() == null ? "0" : invoice.getAmountDue().toPlainString()) + "</td>"
+					+ "</tr>" +
 
 					"</table>" +
 

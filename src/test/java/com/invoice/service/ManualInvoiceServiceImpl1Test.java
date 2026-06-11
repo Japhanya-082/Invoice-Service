@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -281,20 +282,27 @@ class ManualInvoiceServiceImpl1Test {
 	@Test
 	void calculateTotals_correctSubtotalAndTotal() {
 		ManualInvoice request = buildCreateRequest();
-		request.setTax(50.0);
+		request.setTax(new BigDecimal("50.0"));
 
 		// Add two line items: 10h @ $100 = $1000, 5h @ $200 = $1000
 		InvoiceItem item1 = new InvoiceItem();
 		item1.setName("Development");
-		item1.setHours(10.0);
-		item1.setRate(100.0);
+		item1.setHours(new BigDecimal("10.0"));
+		item1.setRate(new BigDecimal("100.0"));
 
 		InvoiceItem item2 = new InvoiceItem();
 		item2.setName("Testing");
-		item2.setHours(5.0);
-		item2.setRate(200.0);
+		item2.setHours(new BigDecimal("5.0"));
+		item2.setRate(new BigDecimal("200.0"));
 
 		request.setItems(new ArrayList<>(List.of(item1, item2)));
+
+		// Frontend computes and sends totals; service preserves them.
+		// subtotal = 10*100 + 5*200 = 2000, total = 2000 + 50 tax = 2050, hours = 15
+		request.setSubtotal(new BigDecimal("2000"));
+		request.setTotal(new BigDecimal("2050"));
+		request.setTotalHours(new BigDecimal("15"));
+		request.setDueAmount(new BigDecimal("2050")); // dueAmount used (not amountDue)
 
 		ConsultantDTO consultant = buildConsultant();
 		VendorDTO vendor = buildVendor();
@@ -311,11 +319,15 @@ class ManualInvoiceServiceImpl1Test {
 
 		ManualInvoice result = service.saveInvoice(request);
 
-		// subtotal = 10*100 + 5*200 = 2000
-		assertEquals(2000.0, result.getSubtotal(), 0.001);
-		// total = subtotal + tax = 2000 + 50 = 2050
-		assertEquals(2050.0, result.getTotal(), 0.001);
-		// totalHours = 10 + 5 = 15
-		assertEquals(15.0, result.getTotalHours(), 0.001);
+		// Verify frontend-supplied totals are preserved by the service
+		assertEquals(0, result.getSubtotal().compareTo(new BigDecimal("2000")),
+				"subtotal must be preserved from request");
+		assertEquals(0, result.getTotal().compareTo(new BigDecimal("2050")),
+				"total must be preserved from request");
+		assertEquals(0, result.getTotalHours().compareTo(new BigDecimal("15")),
+				"totalHours must be preserved from request");
+		// dueAmount (not amountDue) is the due field used by the frontend
+		assertEquals(0, result.getDueAmount().compareTo(new BigDecimal("2050")),
+				"dueAmount must be preserved from request");
 	}
 }

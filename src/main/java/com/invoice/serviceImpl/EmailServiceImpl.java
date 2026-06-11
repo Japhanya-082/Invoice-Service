@@ -49,7 +49,8 @@ public class EmailServiceImpl implements EmailService {
 					"<p><b>Below are the invoice details for your reference:</b></p>" +
 
 					"<p>" + "<b>Invoice Number :</b> " + invoice.getInvoiceNumber() + "<br>" + "<b>Invoice Date :</b> "
-					+ invoice.getInvoiceDate() + "<br>" + "<b>Amount Due :</b> " + invoice.getAmountDue() + "<br>"
+					+ invoice.getInvoiceDate() + "<br>" + "<b>Amount Due :</b> "
+					+ (invoice.getAmountDue() == null ? "0" : invoice.getAmountDue().toPlainString()) + "<br>"
 					+ "<b>Due Date :</b> " + invoice.getDueDate() + "</p>" +
 
 					"<p>"

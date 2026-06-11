@@ -1,9 +1,11 @@
 package com.invoice.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import com.invoice.DTO.VendorAddressDTO;
 
@@ -22,11 +24,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -84,15 +87,29 @@ public class ManualInvoice {
 	private List<String> uploadedFileNames = new ArrayList<>();
 
 	// Financial info
-	private Double totalHours = 0.0;
-	private Double subtotal = 0.0;
-	private Double tax = 0.0;
-	private Double total = 0.0;
-	private Double amountDue = 0.0;
-	private Double credit = 0.0;
+	@Column(name = "total_hours", precision = 19, scale = 4)
+	private BigDecimal totalHours = BigDecimal.ZERO;
+
+	@Column(precision = 19, scale = 4)
+	private BigDecimal subtotal = BigDecimal.ZERO;
+
+	@Column(precision = 19, scale = 4)
+	private BigDecimal tax = BigDecimal.ZERO;
+
+	@Column(precision = 19, scale = 4)
+	private BigDecimal total = BigDecimal.ZERO;
+
+	@Column(name = "amount_due", precision = 19, scale = 4)
+	private BigDecimal amountDue = BigDecimal.ZERO;
+
+	@Column(precision = 19, scale = 4)
+	private BigDecimal credit = BigDecimal.ZERO;
+
 	private String currency;
 	private String issuedBy;
-	private Double discount = 0.0;
+
+	@Column(precision = 19, scale = 4)
+	private BigDecimal discount = BigDecimal.ZERO;
 
 	// Timestamps
 	private LocalDateTime createdAt;
@@ -101,14 +118,14 @@ public class ManualInvoice {
 	@Column(name = "adminId")
 	private Long adminId;
 
-	@Column(name = "paymentAmount")
-	private String paymentAmount;
+	@Column(name = "paymentAmount", precision = 19, scale = 4)
+	private BigDecimal paymentAmount;
 
 	@Column(name = "paymentDate")
 	private LocalDate paymentDate;
 
-	@Column(name = "dueAmount")
-	private String dueAmount;
+	@Column(name = "dueAmount", precision = 19, scale = 4)
+	private BigDecimal dueAmount;
 
 	@Column(name = "remarks")
 	private String remarks;
@@ -119,8 +136,8 @@ public class ManualInvoice {
 	@Column(name = "periodend")
 	private LocalDate periodend;
 
-	@Column(name = "paidAmount")
-	private String paidAmount;
+	@Column(name = "paidAmount", precision = 19, scale = 4)
+	private BigDecimal paidAmount;
 
 	@Column(name = "paidDate")
 	private LocalDate paidDate;
@@ -133,6 +150,13 @@ public class ManualInvoice {
 
 	@Column(name = "employment_id")
 	private Long employmentId;
+
+	@jakarta.persistence.Version
+	@Column(name = "version", nullable = false)
+	private Long version = 0L;
+
+	@Column(name = "deleted_at")
+	private LocalDateTime deletedAt;
 
 	// Billing Address
 	@Embedded
@@ -153,16 +177,113 @@ public class ManualInvoice {
 	private VendorAddressDTO shippingAddress;
 
 	@OneToMany(mappedBy = "manualInvoice", cascade = CascadeType.ALL, orphanRemoval = true)
-	@NotEmpty(message = "Invoice must contain at least one item")
 	@Valid
 	private List<InvoiceItem> items = new ArrayList<>();
 
 	public void addItem(InvoiceItem item) {
-		items.add(item);
-		item.setManualInvoice(this);
+	    items.add(item);
+	    item.setManualInvoice(this);
 	}
 
 	public void clearItems() {
 		items.clear();
 	}
+
+//	/** Statuses permitted by the DB check constraint ck_manual_invoices_status. */
+//	private static final java.util.Set<String> ALLOWED_STATUSES = java.util.Set.of(
+//			"DRAFT", "PENDING", "RECEIVED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED");
+//
+//	/**
+//	 * Single choke point that guarantees {@code status} conforms to
+//	 * ck_manual_invoices_status (UPPERCASE_UNDERSCORE, fixed set) on EVERY insert and
+//	 * update — regardless of what casing or synonym a caller passed. This prevents
+//	 * title-case values like "Pending" from ever reaching the database again, no matter
+//	 * which service writes the entity.
+//	 */
+//	@jakarta.persistence.PrePersist
+//	@jakarta.persistence.PreUpdate
+//	private void normalizeStatus() {
+//		if (status == null || status.isBlank()) {
+//			return; // NULL is allowed by the constraint
+//		}
+//		String s = status.trim().toUpperCase().replaceAll("\\s+", "_");
+//		switch (s) {
+//			case "PARTIALLY_RECEIVED":
+//				s = "PARTIALLY_PAID";
+//				break;
+//			case "EXCESS_RECEIVED":
+//			case "EXCESS_PAID":
+//				s = "PAID";
+//				break;
+//			case "SENT":
+//				s = "PENDING";
+//				break;
+//			default:
+//				break;
+//		}
+//		// Last-resort guard: an unrecognized status falls back to PENDING so a save can
+//		// never crash on the constraint. (In practice the cases above cover the UI values.)
+//		if (!ALLOWED_STATUSES.contains(s)) {
+//			s = "PENDING";
+//		}
+//		status = s;
+//	}
+	
+	/** Statuses permitted by the DB check constraint. */
+	private static final Set<String> ALLOWED_STATUSES = Set.of(
+	        "DRAFT",
+	        "PENDING",
+	        "RECEIVED",
+	        "PARTIALLY_RECEIVED",
+	        "PARTIALLY_PAID",
+	        "PAID",
+	        "OVERDUE",
+	        "CANCELLED",
+	        "EXCESS_RECEIVED",
+	        "EXCESS_PAID"
+	);
+
+	@PrePersist
+	@PreUpdate
+	private void normalizeStatus() {
+	    if (status == null || status.isBlank()) {
+	        return;
+	    }
+
+	    String s = status.trim()
+	                     .toUpperCase()
+	                     .replaceAll("\\s+", "_");
+
+	    // Normalize frontend aliases
+	    if ("SENT".equals(s)) {
+	        s = "PENDING";
+	    }
+
+	    // Enforce AR/AP status separation so dumped or mis-labelled data is always corrected.
+	    // receivable invoices must use RECEIVED-family; payable must use PAID-family.
+	    if ("receivable".equalsIgnoreCase(vendorType)) {
+	        switch (s) {
+	            case "PAID":           s = "RECEIVED";           break;
+	            case "PARTIALLY_PAID": s = "PARTIALLY_RECEIVED"; break;
+	            case "EXCESS_PAID":    s = "EXCESS_RECEIVED";    break;
+	            default: break;
+	        }
+	    } else if ("payable".equalsIgnoreCase(vendorType)) {
+	        switch (s) {
+	            case "RECEIVED":           s = "PAID";           break;
+	            case "PARTIALLY_RECEIVED": s = "PARTIALLY_PAID"; break;
+	            case "EXCESS_RECEIVED":    s = "EXCESS_PAID";    break;
+	            default: break;
+	        }
+	    }
+
+	    // Prevent invalid values
+	    if (!ALLOWED_STATUSES.contains(s)) {
+	        s = "PENDING";
+	    }
+
+	    status = s;
+	}
+	
+	
 }

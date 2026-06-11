@@ -3,6 +3,7 @@ package com.invoice.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -37,13 +38,20 @@ public class ManualInvoiceLegacy {
 	@Column(name = "po_number")
 	private String poNumber;
 
-	private Double subtotal = 0.0;
-	private Double tax = 0.0;
-	private Double total = 0.0;
-	private Double credit = 0.0;
+	@Column(precision = 19, scale = 4)
+	private BigDecimal subtotal = BigDecimal.ZERO;
 
-	@Column(name = "amount_due")
-	private Double amountDue = 0.0;
+	@Column(precision = 19, scale = 4)
+	private BigDecimal tax = BigDecimal.ZERO;
+
+	@Column(precision = 19, scale = 4)
+	private BigDecimal total = BigDecimal.ZERO;
+
+	@Column(precision = 19, scale = 4)
+	private BigDecimal credit = BigDecimal.ZERO;
+
+	@Column(name = "amount_due", precision = 19, scale = 4)
+	private BigDecimal amountDue = BigDecimal.ZERO;
 
 	@Column(name = "admin_id")
 	private Long adminId;

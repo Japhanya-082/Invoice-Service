@@ -43,6 +43,7 @@ public class SchemaProvisioningController {
 			for (String tenant : tenants) {
 				try {
 					cloneSchema(conn, SOURCE_SCHEMA, tenant);
+					fixArApStatuses(conn, tenant);
 					log.info("Synced tenant schema '{}'", tenant);
 				} catch (Exception e) {
 					log.error("Failed to sync tenant schema '{}': {}", tenant, e.getMessage());
@@ -136,6 +137,39 @@ public class SchemaProvisioningController {
 		}
 		fixSequences(conn, tgt, table);
 		log.debug("Cloned table '{}' → '{}'", table, tgt);
+	}
+
+	/**
+	 * Corrects AR/AP status separation in the given schema.
+	 * Receivable invoices get RECEIVED-family statuses; payable get PAID-family.
+	 * Called on startup after schema sync so every fresh data dump is corrected automatically.
+	 */
+	private void fixArApStatuses(Connection conn, String schema) throws SQLException {
+		String arFix = "UPDATE \"" + schema + "\".manual_invoices "
+				+ "SET status = CASE UPPER(status) "
+				+ "  WHEN 'PAID'           THEN 'RECEIVED' "
+				+ "  WHEN 'PARTIALLY_PAID' THEN 'PARTIALLY_RECEIVED' "
+				+ "  WHEN 'EXCESS_PAID'    THEN 'EXCESS_RECEIVED' "
+				+ "  ELSE status END "
+				+ "WHERE LOWER(vendor_type) = 'receivable' "
+				+ "  AND UPPER(status) IN ('PAID','PARTIALLY_PAID','EXCESS_PAID')";
+
+		String apFix = "UPDATE \"" + schema + "\".manual_invoices "
+				+ "SET status = CASE UPPER(status) "
+				+ "  WHEN 'RECEIVED'           THEN 'PAID' "
+				+ "  WHEN 'PARTIALLY_RECEIVED' THEN 'PARTIALLY_PAID' "
+				+ "  WHEN 'EXCESS_RECEIVED'    THEN 'EXCESS_PAID' "
+				+ "  ELSE status END "
+				+ "WHERE LOWER(vendor_type) = 'payable' "
+				+ "  AND UPPER(status) IN ('RECEIVED','PARTIALLY_RECEIVED','EXCESS_RECEIVED')";
+
+		try (Statement stmt = conn.createStatement()) {
+			int arRows = stmt.executeUpdate(arFix);
+			int apRows = stmt.executeUpdate(apFix);
+			if (arRows > 0 || apRows > 0) {
+				log.info("Status fix in '{}': corrected {} AR row(s) and {} AP row(s)", schema, arRows, apRows);
+			}
+		}
 	}
 
 	private static void fixSequences(Connection conn, String tgtSchema, String table) throws SQLException {

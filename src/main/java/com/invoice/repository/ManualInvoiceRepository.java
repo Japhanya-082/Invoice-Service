@@ -18,10 +18,16 @@ import com.invoice.entity.ManualInvoice;
 public interface ManualInvoiceRepository
 		extends JpaRepository<ManualInvoice, Long>, JpaSpecificationExecutor<ManualInvoice> {
 
+	/** Unscoped; use {@code existsByInvoiceNumberAndAdminId} instead. */
+	@Deprecated(forRemoval = false)
 	boolean existsByInvoiceNumber(String invoiceNumber);
 
+	/** Unscoped; use {@code findByCustomerVendorIdAndAdminId}. */
+	@Deprecated(forRemoval = false)
 	List<ManualInvoice> findByCustomerVendorId(Long vendorId);
 
+	/** Unscoped. */
+	@Deprecated(forRemoval = false)
 	List<ManualInvoice> findByConsultantId(Long consultantId);
 
 	List<ManualInvoice> findByCustomerVendorIdAndAdminId(Long vendorId, Long adminId);
@@ -61,8 +67,12 @@ public interface ManualInvoiceRepository
 			+ "			        OR LOWER(COALESCE(m.shippingAddress.state, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
 			+ "			        OR LOWER(COALESCE(m.shippingAddress.zipCode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))\r\n"
 			+ "			    )")
+	/** Unscoped; prefer the variant with adminId. */
+	@Deprecated(forRemoval = false)
 	Page<ManualInvoice> searchInvoices(@Param("keyword") String keyword, Pageable pageable);
 
+	/** Unscoped. */
+	@Deprecated(forRemoval = false)
 	long countByCustomerVendorId(Long vendorId);
 
 	boolean existsByPoNumber(String poNumber);
@@ -75,15 +85,23 @@ public interface ManualInvoiceRepository
 
 	boolean existsByPoNumberIgnoreCase(String poNumber);
 
+	/** Unscoped; global count across all tenants. */
+	@Deprecated(forRemoval = false)
 	@Query("SELECT COUNT(i) FROM ManualInvoice i")
 	Long getTotalInvoiceCount();
 
+	/** Unscoped; global count across all tenants. */
+	@Deprecated(forRemoval = false)
 	@Query("SELECT COUNT(i) FROM ManualInvoice i WHERE LOWER(i.status) = 'paid'")
 	Long getPaidInvoiceCount();
 
+	/** Unscoped; global count across all tenants. */
+	@Deprecated(forRemoval = false)
 	@Query("SELECT COUNT(i) FROM ManualInvoice i WHERE LOWER(i.status) = 'pending'")
 	Long getPendingInvoiceCount();
 
+	/** Unscoped; global count across all tenants. */
+	@Deprecated(forRemoval = false)
 	@Query("SELECT COUNT(i) FROM ManualInvoice i WHERE LOWER(i.status) = 'overdue'")
 	Long getOverdueInvoiceCount();
 

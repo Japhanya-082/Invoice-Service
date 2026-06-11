@@ -8,6 +8,9 @@ import com.invoice.repository.InvoiceRepository;
 import com.invoice.repository.ManualInvoiceRepository;
 import com.invoice.service.VendorClientService;
 import com.invoice.serviceImpl.ManualInvoiceServiceImpl1;
+import com.invoice.tenant.TenantContext;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -45,6 +48,18 @@ class ManualInvoiceControllerTest {
 	private ObjectMapper objectMapper;
 
 	// --- All beans that the controller @Autowires ---
+
+	@BeforeEach
+	void setUp() {
+		// SecurityUtils.getCurrentAdminId() reads TenantContext first.
+		// Set it up here so controller methods don't throw SecurityIntegrityException.
+		TenantContext.setCurrentAdminId(1L);
+	}
+
+	@AfterEach
+	void tearDown() {
+		TenantContext.clear();
+	}
 
 	@MockBean
 	private ManualInvoiceServiceImpl1 serviceImpl1;

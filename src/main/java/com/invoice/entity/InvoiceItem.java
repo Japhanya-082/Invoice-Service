@@ -1,5 +1,7 @@
 package com.invoice.entity;
 
+import java.math.BigDecimal;
+
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -25,19 +27,21 @@ public class InvoiceItem {
 	private String description;
 
 	@NotNull(message = "Hours is required")
-	private Double hours = 0.0;
+	@Column(precision = 19, scale = 4)
+	private BigDecimal hours = BigDecimal.ZERO;
 
 	@NotNull(message = "Rate is required")
-	private Double rate = 0.0;
+	@Column(precision = 19, scale = 4)
+	private BigDecimal rate = BigDecimal.ZERO;
 
-	
+
 	// Calculated in service
-	private Double amount = 0.0;
+	@Column(precision = 19, scale = 4)
+	private BigDecimal amount = BigDecimal.ZERO;
 
 	@ManyToOne(fetch = FetchType.LAZY, optional = false)
 	@JoinColumn(name = "invoice_id", nullable = false)
 	@JsonBackReference
 	private ManualInvoice manualInvoice;
 	
-
 }
