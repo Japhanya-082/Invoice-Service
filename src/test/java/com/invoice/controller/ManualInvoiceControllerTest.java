@@ -6,6 +6,7 @@ import com.invoice.common.RestAPIResponse;
 import com.invoice.entity.ManualInvoice;
 import com.invoice.repository.InvoiceRepository;
 import com.invoice.repository.ManualInvoiceRepository;
+import com.invoice.service.DashboardService;
 import com.invoice.service.VendorClientService;
 import com.invoice.serviceImpl.ManualInvoiceServiceImpl1;
 import com.invoice.tenant.TenantContext;
@@ -63,6 +64,9 @@ class ManualInvoiceControllerTest {
 
 	@MockBean
 	private ManualInvoiceServiceImpl1 serviceImpl1;
+
+	@MockBean
+	private DashboardService dashboardService;
 
 	@MockBean
 	private ManualInvoiceRepository manualInvoiceRepository;

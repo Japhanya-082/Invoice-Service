@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.invoice.DTO.DashboardSummaryResponse;
 import com.invoice.DTO.InvoiceSortingRequestDTO;
 import com.invoice.DTO.VendorAddressDTO;
 import com.invoice.DTO.VendorDTO;
@@ -40,6 +41,7 @@ import com.invoice.entity.ManualInvoice;
 import com.invoice.repository.InvoiceRepository;
 import com.invoice.repository.ManualInvoiceRepository;
 import com.invoice.service.VendorClientService;
+import com.invoice.service.DashboardService;
 import com.invoice.serviceImpl.ManualInvoiceServiceImpl1;
 import com.invoice.tenant.SecurityUtils;
 
@@ -66,6 +68,9 @@ public class ManualInvoiceController1 {
 
 	@Autowired
 	private InvoiceRepository invoiceRepository;
+
+	@Autowired
+	private DashboardService dashboardService;
 
 	@Autowired
 	private ObjectMapper objectMapper;
@@ -589,6 +594,13 @@ public class ManualInvoiceController1 {
 	@GetMapping("/check-employment/{employmentId}")
 	public ResponseEntity<Boolean> checkEmploymentInvoices(@PathVariable Long employmentId) {
 		return serviceImpl1.checkEmploymentInvoices(employmentId);
+	}
+
+	@GetMapping("/dashboard-summary")
+	public ResponseEntity<RestAPIResponse> getDashboardSummary() {
+		Long adminId = SecurityUtils.getCurrentAdminId();
+		DashboardSummaryResponse summary = dashboardService.getSummary(adminId);
+		return ResponseEntity.ok(new RestAPIResponse("success", "Dashboard summary", summary));
 	}
 
 }
