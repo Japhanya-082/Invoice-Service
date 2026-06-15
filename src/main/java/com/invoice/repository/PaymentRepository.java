@@ -36,4 +36,73 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
                                             Pageable pageable);
 
     boolean existsByAdminIdAndPaymentReferenceIgnoreCase(Long adminId, String paymentReference);
+
+    // ─── Dashboard: Monthly totals ────────────────────────────────────────────
+
+    @Query("SELECT SUM(p.amount) FROM Payment p " +
+           "WHERE p.adminId = :adminId " +
+           "AND p.status = com.invoice.entity.Payment.Status.POSTED " +
+           "AND p.deletedAt IS NULL " +
+           "AND p.invoiceId IN (" +
+           "  SELECT i.id FROM ManualInvoice i " +
+           "  WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'receivable' AND i.deletedAt IS NULL" +
+           ") " +
+           "AND YEAR(p.paymentDate) = :year " +
+           "AND MONTH(p.paymentDate) = :month")
+    BigDecimal sumCollectedThisMonth(
+            @Param("adminId") Long adminId,
+            @Param("year")    int year,
+            @Param("month")   int month);
+
+    @Query("SELECT COUNT(p) FROM Payment p " +
+           "WHERE p.adminId = :adminId " +
+           "AND p.status = com.invoice.entity.Payment.Status.POSTED " +
+           "AND p.deletedAt IS NULL " +
+           "AND p.invoiceId IN (" +
+           "  SELECT i.id FROM ManualInvoice i " +
+           "  WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'receivable' AND i.deletedAt IS NULL" +
+           ") " +
+           "AND YEAR(p.paymentDate) = :year " +
+           "AND MONTH(p.paymentDate) = :month")
+    Long countCollectedThisMonth(
+            @Param("adminId") Long adminId,
+            @Param("year")    int year,
+            @Param("month")   int month);
+
+    @Query("SELECT SUM(p.amount) FROM Payment p " +
+           "WHERE p.adminId = :adminId " +
+           "AND p.status = com.invoice.entity.Payment.Status.POSTED " +
+           "AND p.deletedAt IS NULL " +
+           "AND p.invoiceId IN (" +
+           "  SELECT i.id FROM ManualInvoice i " +
+           "  WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'payable' AND i.deletedAt IS NULL" +
+           ") " +
+           "AND YEAR(p.paymentDate) = :year " +
+           "AND MONTH(p.paymentDate) = :month")
+    BigDecimal sumPaidThisMonth(
+            @Param("adminId") Long adminId,
+            @Param("year")    int year,
+            @Param("month")   int month);
+
+    @Query("SELECT COUNT(p) FROM Payment p " +
+           "WHERE p.adminId = :adminId " +
+           "AND p.status = com.invoice.entity.Payment.Status.POSTED " +
+           "AND p.deletedAt IS NULL " +
+           "AND p.invoiceId IN (" +
+           "  SELECT i.id FROM ManualInvoice i " +
+           "  WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'payable' AND i.deletedAt IS NULL" +
+           ") " +
+           "AND YEAR(p.paymentDate) = :year " +
+           "AND MONTH(p.paymentDate) = :month")
+    Long countPaidThisMonth(
+            @Param("adminId") Long adminId,
+            @Param("year")    int year,
+            @Param("month")   int month);
+
+    @Query("SELECT p FROM Payment p " +
+           "WHERE p.adminId = :adminId AND p.deletedAt IS NULL " +
+           "ORDER BY p.createdAt DESC")
+    List<Payment> findRecentPayments(
+            @Param("adminId") Long adminId,
+            org.springframework.data.domain.Pageable pageable);
 }

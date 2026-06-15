@@ -1,5 +1,6 @@
 package com.invoice.repository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -263,5 +264,123 @@ public interface ManualInvoiceRepository
 	Object getInvoiceStatusCounts(@Param("adminId") Long adminId);
 
 	boolean existsByEmploymentId(Long employmentId);
+
+    // ─── Dashboard: AR/AP Outstanding ────────────────────────────────────────
+
+    @Query("SELECT SUM(i.amountDue) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'receivable' " +
+           "AND UPPER(i.status) IN ('PENDING','PARTIALLY_RECEIVED','OVERDUE') " +
+           "AND i.deletedAt IS NULL")
+    BigDecimal sumArOutstanding(@Param("adminId") Long adminId);
+
+    @Query("SELECT COUNT(i) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'receivable' " +
+           "AND UPPER(i.status) IN ('PENDING','PARTIALLY_RECEIVED','OVERDUE') " +
+           "AND i.deletedAt IS NULL")
+    Long countArOutstanding(@Param("adminId") Long adminId);
+
+    @Query("SELECT SUM(i.amountDue) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'payable' " +
+           "AND UPPER(i.status) IN ('PENDING','PARTIALLY_PAID','OVERDUE') " +
+           "AND i.deletedAt IS NULL")
+    BigDecimal sumApOutstanding(@Param("adminId") Long adminId);
+
+    @Query("SELECT COUNT(i) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'payable' " +
+           "AND UPPER(i.status) IN ('PENDING','PARTIALLY_PAID','OVERDUE') " +
+           "AND i.deletedAt IS NULL")
+    Long countApOutstanding(@Param("adminId") Long adminId);
+
+    // ─── Dashboard: Overdue ───────────────────────────────────────────────────
+
+    @Query("SELECT SUM(i.amountDue) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND i.dueDate IS NOT NULL AND i.dueDate < CURRENT_DATE " +
+           "AND UPPER(i.status) NOT IN ('PAID','RECEIVED','CANCELLED','DRAFT','EXCESS_PAID','EXCESS_RECEIVED') " +
+           "AND i.deletedAt IS NULL")
+    BigDecimal sumOverdueAmount(@Param("adminId") Long adminId);
+
+    @Query("SELECT COUNT(i) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND i.dueDate IS NOT NULL AND i.dueDate < CURRENT_DATE " +
+           "AND UPPER(i.status) NOT IN ('PAID','RECEIVED','CANCELLED','DRAFT','EXCESS_PAID','EXCESS_RECEIVED') " +
+           "AND i.deletedAt IS NULL")
+    Long countOverdue(@Param("adminId") Long adminId);
+
+    @Query("SELECT SUM(i.amountDue) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'receivable' " +
+           "AND i.dueDate IS NOT NULL AND i.dueDate < CURRENT_DATE " +
+           "AND UPPER(i.status) NOT IN ('RECEIVED','CANCELLED','DRAFT','EXCESS_RECEIVED') " +
+           "AND i.deletedAt IS NULL")
+    BigDecimal sumArOverdueAmount(@Param("adminId") Long adminId);
+
+    @Query("SELECT SUM(i.amountDue) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'payable' " +
+           "AND i.dueDate IS NOT NULL AND i.dueDate < CURRENT_DATE " +
+           "AND UPPER(i.status) NOT IN ('PAID','CANCELLED','DRAFT','EXCESS_PAID') " +
+           "AND i.deletedAt IS NULL")
+    BigDecimal sumApOverdueAmount(@Param("adminId") Long adminId);
+
+    // ─── Dashboard: Upcoming Due Dates ────────────────────────────────────────
+
+    @Query("SELECT i FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND i.dueDate IS NOT NULL " +
+           "AND i.dueDate <= :endDate " +
+           "AND UPPER(i.status) NOT IN ('PAID','RECEIVED','CANCELLED','EXCESS_PAID','EXCESS_RECEIVED','DRAFT') " +
+           "AND i.deletedAt IS NULL " +
+           "ORDER BY i.dueDate ASC")
+    List<ManualInvoice> findUpcomingAndOverdue(
+            @Param("adminId") Long adminId,
+            @Param("endDate") java.time.LocalDate endDate,
+            org.springframework.data.domain.Pageable pageable);
+
+    // ─── Dashboard: Recent Activity ───────────────────────────────────────────
+
+    @Query("SELECT i FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND i.deletedAt IS NULL " +
+           "ORDER BY i.updatedAt DESC")
+    List<ManualInvoice> findRecentlyUpdated(
+            @Param("adminId") Long adminId,
+            org.springframework.data.domain.Pageable pageable);
+
+    // ─── Dashboard: Collected / Paid this month (from invoice status) ─────────
+
+    @Query("SELECT SUM(i.total) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'receivable' " +
+           "AND UPPER(i.status) IN ('RECEIVED','PARTIALLY_RECEIVED','EXCESS_RECEIVED') " +
+           "AND i.deletedAt IS NULL " +
+           "AND YEAR(i.invoiceDate) = :year AND MONTH(i.invoiceDate) = :month")
+    BigDecimal sumCollectedThisMonth(
+            @Param("adminId") Long adminId,
+            @Param("year")    int year,
+            @Param("month")   int month);
+
+    @Query("SELECT COUNT(i) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'receivable' " +
+           "AND UPPER(i.status) IN ('RECEIVED','PARTIALLY_RECEIVED','EXCESS_RECEIVED') " +
+           "AND i.deletedAt IS NULL " +
+           "AND YEAR(i.invoiceDate) = :year AND MONTH(i.invoiceDate) = :month")
+    Long countCollectedThisMonth(
+            @Param("adminId") Long adminId,
+            @Param("year")    int year,
+            @Param("month")   int month);
+
+    @Query("SELECT SUM(i.total) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'payable' " +
+           "AND UPPER(i.status) IN ('PAID','PARTIALLY_PAID','EXCESS_PAID') " +
+           "AND i.deletedAt IS NULL " +
+           "AND YEAR(i.invoiceDate) = :year AND MONTH(i.invoiceDate) = :month")
+    BigDecimal sumPaidThisMonth(
+            @Param("adminId") Long adminId,
+            @Param("year")    int year,
+            @Param("month")   int month);
+
+    @Query("SELECT COUNT(i) FROM ManualInvoice i " +
+           "WHERE i.adminId = :adminId AND LOWER(i.vendorType) = 'payable' " +
+           "AND UPPER(i.status) IN ('PAID','PARTIALLY_PAID','EXCESS_PAID') " +
+           "AND i.deletedAt IS NULL " +
+           "AND YEAR(i.invoiceDate) = :year AND MONTH(i.invoiceDate) = :month")
+    Long countPaidThisMonth(
+            @Param("adminId") Long adminId,
+            @Param("year")    int year,
+            @Param("month")   int month);
 
 }
