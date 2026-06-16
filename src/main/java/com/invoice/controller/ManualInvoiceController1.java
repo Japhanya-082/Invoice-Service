@@ -30,7 +30,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.invoice.DTO.DashboardSummaryResponse;
+import com.invoice.DTO.DashboardRawDataDTO;
+import com.invoice.DTO.InvoiceSnapshotDTO;
+import com.invoice.DTO.KpiRawDTO;
+import com.invoice.DTO.PaymentSnapshotDTO;
 import com.invoice.DTO.InvoiceSortingRequestDTO;
 import com.invoice.DTO.VendorAddressDTO;
 import com.invoice.DTO.VendorDTO;
@@ -38,10 +41,11 @@ import com.invoice.client.VendorFeignClient;
 import com.invoice.common.RestAPIResponse;
 import com.invoice.entity.InvoiceItem;
 import com.invoice.entity.ManualInvoice;
+import com.invoice.entity.Payment;
 import com.invoice.repository.InvoiceRepository;
 import com.invoice.repository.ManualInvoiceRepository;
+import com.invoice.repository.PaymentRepository;
 import com.invoice.service.VendorClientService;
-import com.invoice.service.DashboardService;
 import com.invoice.serviceImpl.ManualInvoiceServiceImpl1;
 import com.invoice.tenant.SecurityUtils;
 
@@ -61,6 +65,9 @@ public class ManualInvoiceController1 {
 	private ManualInvoiceRepository manualInvoiceRepository;
 
 	@Autowired
+	private PaymentRepository paymentRepository;
+
+	@Autowired
 	private VendorClientService vendorClientService;
 
 	@Autowired
@@ -68,9 +75,6 @@ public class ManualInvoiceController1 {
 
 	@Autowired
 	private InvoiceRepository invoiceRepository;
-
-	@Autowired
-	private DashboardService dashboardService;
 
 	@Autowired
 	private ObjectMapper objectMapper;
@@ -596,11 +600,86 @@ public class ManualInvoiceController1 {
 		return serviceImpl1.checkEmploymentInvoices(employmentId);
 	}
 
-	@GetMapping("/dashboard-summary")
-	public ResponseEntity<RestAPIResponse> getDashboardSummary() {
+	@GetMapping("/internal/dashboard-raw")
+	public ResponseEntity<RestAPIResponse> getInternalDashboardRaw() {
 		Long adminId = SecurityUtils.getCurrentAdminId();
-		DashboardSummaryResponse summary = dashboardService.getSummary(adminId);
-		return ResponseEntity.ok(new RestAPIResponse("success", "Dashboard summary", summary));
+		java.time.LocalDate today = java.time.LocalDate.now();
+		int year = today.getYear();
+		int month = today.getMonthValue();
+
+		KpiRawDTO kpi = KpiRawDTO.builder()
+				.arOutstanding(safe(manualInvoiceRepository.sumArOutstanding(adminId)))
+				.arOutstandingCount(safe(manualInvoiceRepository.countArOutstanding(adminId)))
+				.apOutstanding(safe(manualInvoiceRepository.sumApOutstanding(adminId)))
+				.apOutstandingCount(safe(manualInvoiceRepository.countApOutstanding(adminId)))
+				.overdueAmount(safe(manualInvoiceRepository.sumOverdueAmount(adminId)))
+				.overdueCount(safe(manualInvoiceRepository.countOverdue(adminId)))
+				.arOverdueAmount(safe(manualInvoiceRepository.sumArOverdueAmount(adminId)))
+				.apOverdueAmount(safe(manualInvoiceRepository.sumApOverdueAmount(adminId)))
+				.collectedThisMonth(safe(manualInvoiceRepository.sumCollectedThisMonth(adminId, year, month)))
+				.collectedThisMonthCount(safe(manualInvoiceRepository.countCollectedThisMonth(adminId, year, month)))
+				.paidThisMonth(safe(manualInvoiceRepository.sumPaidThisMonth(adminId, year, month)))
+				.paidThisMonthCount(safe(manualInvoiceRepository.countPaidThisMonth(adminId, year, month)))
+				.build();
+
+		List<InvoiceSnapshotDTO> upcoming = manualInvoiceRepository
+				.findUpcomingAndOverdue(adminId, today.plusDays(14), PageRequest.of(0, 20))
+				.stream().map(this::toInvoiceSnapshot).collect(Collectors.toList());
+
+		List<InvoiceSnapshotDTO> recentInvoices = manualInvoiceRepository
+				.findRecentlyUpdated(adminId, PageRequest.of(0, 20))
+				.stream().map(this::toInvoiceSnapshot).collect(Collectors.toList());
+
+		List<PaymentSnapshotDTO> recentPayments = paymentRepository
+				.findRecentPayments(adminId, PageRequest.of(0, 10))
+				.stream().map(pay -> toPaymentSnapshot(pay, adminId)).filter(p -> p != null)
+				.collect(Collectors.toList());
+
+		DashboardRawDataDTO raw = DashboardRawDataDTO.builder()
+				.kpiData(kpi)
+				.upcomingInvoices(upcoming)
+				.recentInvoices(recentInvoices)
+				.recentPayments(recentPayments)
+				.build();
+
+		return ResponseEntity.ok(new RestAPIResponse("success", "Internal dashboard data", raw));
 	}
+
+	private InvoiceSnapshotDTO toInvoiceSnapshot(ManualInvoice inv) {
+		return InvoiceSnapshotDTO.builder()
+				.id(inv.getId())
+				.invoiceNumber(inv.getInvoiceNumber())
+				.customer(inv.getCustomer())
+				.vendorType(inv.getVendorType())
+				.status(inv.getStatus())
+				.invoiceDate(inv.getInvoiceDate())
+				.dueDate(inv.getDueDate())
+				.amountDue(inv.getAmountDue())
+				.total(inv.getTotal())
+				.createdAt(inv.getCreatedAt())
+				.updatedAt(inv.getUpdatedAt())
+				.build();
+	}
+
+	private PaymentSnapshotDTO toPaymentSnapshot(Payment pay, Long adminId) {
+		try {
+			ManualInvoice inv = manualInvoiceRepository.findById(pay.getInvoiceId()).orElse(null);
+			if (inv == null || !adminId.equals(inv.getAdminId())) return null;
+			return PaymentSnapshotDTO.builder()
+					.paymentId(pay.getPaymentId())
+					.invoiceId(pay.getInvoiceId())
+					.amount(pay.getAmount())
+					.createdAt(pay.getCreatedAt())
+					.invoiceNumber(inv.getInvoiceNumber())
+					.customer(inv.getCustomer())
+					.vendorType(inv.getVendorType())
+					.build();
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	private java.math.BigDecimal safe(java.math.BigDecimal v) { return v != null ? v : java.math.BigDecimal.ZERO; }
+	private Long safe(Long v) { return v != null ? v : 0L; }
 
 }
