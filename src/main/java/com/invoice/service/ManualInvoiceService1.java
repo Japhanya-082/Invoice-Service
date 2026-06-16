@@ -77,5 +77,4 @@ public interface ManualInvoiceService1 {
 
 	public ResponseEntity<Boolean> checkEmploymentInvoices(Long employmentId);
 	
-
 }
