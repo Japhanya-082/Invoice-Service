@@ -583,6 +583,15 @@ public class ManualInvoiceController1 {
 		return ResponseEntity.ok(new RestAPIResponse("Success", "Invoices fetched successfully", responseData));
 	}
 
+	@PostMapping("/find-invoice-page")
+	public ResponseEntity<RestAPIResponse> getInvoicePage(@RequestBody InvoiceSortingRequestDTO requestDTO) {
+		Long adminId = SecurityUtils.getCurrentAdminId();
+		int pageSize = (requestDTO.getPageSize() != null && requestDTO.getPageSize() > 0) ? requestDTO.getPageSize() : 20;
+		int pageNumber = serviceImpl1.getInvoicePage(
+				requestDTO.getInvoiceId(), requestDTO.getVendorType(), requestDTO.getStatus(), pageSize, adminId);
+		return ResponseEntity.ok(new RestAPIResponse("Success", "Invoice page found", Map.of("pageNumber", pageNumber)));
+	}
+
 	@GetMapping("/status-count/{adminId}")
 	public ResponseEntity<?> getInvoiceStatusCounts(@PathVariable Long adminId) {
 		Long authAdminId = SecurityUtils.getCurrentAdminId();

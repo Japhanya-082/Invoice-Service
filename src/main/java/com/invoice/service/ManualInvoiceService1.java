@@ -75,6 +75,8 @@ public interface ManualInvoiceService1 {
 
 	public Map<String, Object> getInvoiceStatusCounts(Long adminId);
 
+	int getInvoicePage(Long invoiceId, String vendorType, String status, int pageSize, Long adminId);
+
 	public ResponseEntity<Boolean> checkEmploymentInvoices(Long employmentId);
 	
 }

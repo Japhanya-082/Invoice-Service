@@ -1096,6 +1096,12 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		return invoiceRepository.findByAdminIdAndVendorTypeIgnoreCase(adminId, vendorType, pageable);
 	}
 
+	@Override
+	public int getInvoicePage(Long invoiceId, String vendorType, String status, int pageSize, Long adminId) {
+		long countBefore = invoiceRepository.countBeforeIdWithFilters(adminId, vendorType, status, invoiceId);
+		return (int) (countBefore / pageSize) + 1;
+	}
+
 	private String resolveSortField(String sortBy) {
 		if (sortBy == null || sortBy.trim().isEmpty()) {
 			return "invoiceDate";

@@ -256,6 +256,9 @@ public interface ManualInvoiceRepository
 			+ "			    AND LOWER(i.status) = LOWER(:status)")
 	Page<ManualInvoice> findReceivableByStatus(Long adminId, String vendorType, String status, Pageable pageable);
 
+	@Query("SELECT COUNT(i) FROM ManualInvoice i WHERE i.adminId = :adminId AND LOWER(i.vendorType) = LOWER(:vendorType) AND LOWER(i.status) = LOWER(:status) AND i.id < :invoiceId")
+	long countBeforeIdWithFilters(@Param("adminId") Long adminId, @Param("vendorType") String vendorType, @Param("status") String status, @Param("invoiceId") Long invoiceId);
+
 	@Query(value = "SELECT\r\n" + "			    COUNT(CASE WHEN LOWER(status) = 'paid' THEN 1 END) AS paid_count,\r\n"
 			+ "			    COUNT(CASE WHEN LOWER(status) = 'pending' THEN 1 END) AS pending_count,\r\n"
 			+ "			    COUNT(CASE WHEN LOWER(status) = 'received' THEN 1 END) AS received_count,\r\n"
