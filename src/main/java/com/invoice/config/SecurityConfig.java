@@ -48,7 +48,8 @@ public class SecurityConfig {
 				.requestMatchers(
 						"/actuator/health",
 						"/actuator/info",
-						"/internal/provision-schema/**"
+						"/internal/provision-schema/**",
+						"/manual-invoice/run-daily-alerts"
 				).permitAll()
 				.anyRequest().authenticated())
 			// TenantFilter validates the JWT and populates the SecurityContext.

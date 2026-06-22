@@ -38,7 +38,10 @@ import com.invoice.DTO.VendorDTO;
 import com.invoice.client.ConsultantFeignClient;
 import com.invoice.client.VendorFeignClient;
 import com.invoice.entity.InvoiceItem;
+import com.invoice.entity.AdminSettings;
 import com.invoice.entity.ManualInvoice;
+import com.invoice.tenant.SecurityUtils;
+import com.invoice.repository.AdminSettingsRepository;
 import com.invoice.repository.ManualInvoiceRepository;
 import com.invoice.service.ManualInvoiceService1;
 
@@ -54,6 +57,12 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	@Autowired
 	private ManualInvoiceRepository invoiceRepository;
+
+	@Autowired
+	private AdminSettingsRepository adminSettingsRepository;
+
+	@Autowired
+	private com.invoice.repository.ManageUserRepository manageUserRepository;
 
 	@Autowired
 	private VendorFeignClient vendorFeignClient;
@@ -241,7 +250,8 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 				String invoiceId = String.format("%03d", invoice.getId());
 
-				invoice.setInvoiceNumber("INV-" + year + consultant + invoiceId);
+				String prefix = resolveInvoicePrefix(invoice.getAdminId());
+				invoice.setInvoiceNumber(prefix + year + consultant + invoiceId);
 			}
 			
 			return invoiceRepository.save(invoice);
@@ -752,7 +762,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		String email = consultant.getInvoiceMail();
 
 		List<String> emails = Arrays.stream(email.split(",")).map(String::trim).filter(e -> !e.isEmpty()).toList();
-		invoiceEmailService.sendInvoiceMail(emails, invoice);
+		invoiceEmailService.sendInvoiceMail(emails, invoice, buildCcList(adminId));
 	}
 
 	@Override
@@ -860,7 +870,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 			if (emails.isEmpty()) {
 				throw new RuntimeException("No valid email addresses found");
 			}
-			invoiceEmailService.sendInvoiceMail(emails, invoice);
+			invoiceEmailService.sendInvoiceMail(emails, invoice, buildCcList(adminId));
 			// Must match ck_manual_invoices_status (uppercase enum), not title case.
 			invoice.setStatus("PENDING");
 			invoiceRepository.save(invoice);
@@ -1100,6 +1110,29 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 	public int getInvoicePage(Long invoiceId, String vendorType, String status, int pageSize, Long adminId) {
 		long countBefore = invoiceRepository.countBeforeIdWithFilters(adminId, vendorType, status, invoiceId);
 		return (int) (countBefore / pageSize) + 1;
+	}
+
+	private String resolveInvoicePrefix(Long adminId) {
+		try {
+			String email = SecurityUtils.getCurrentUserEmail();
+			if (email != null) {
+				return adminSettingsRepository.findByEmailIgnoreCase(email)
+					.map(AdminSettings::getInvoicePrefix)
+					.filter(p -> p != null && !p.trim().isEmpty())
+					.map(p -> p.trim().endsWith("-") ? p.trim() : p.trim() + "-")
+					.orElse("INV-");
+			}
+		} catch (Exception ignored) {}
+		return "INV-";
+	}
+
+	private List<String> buildCcList(Long adminId) {
+		return manageUserRepository.findAdminAndHrByAdminId(adminId)
+				.stream()
+				.map(u -> u.getPrimaryEmail())
+				.filter(e -> e != null && !e.isBlank())
+				.distinct()
+				.collect(java.util.stream.Collectors.toList());
 	}
 
 	private String resolveSortField(String sortBy) {

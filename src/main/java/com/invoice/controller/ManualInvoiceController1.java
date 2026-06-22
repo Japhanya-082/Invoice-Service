@@ -610,11 +610,15 @@ public class ManualInvoiceController1 {
 	}
 
 	@GetMapping("/internal/dashboard-raw")
-	public ResponseEntity<RestAPIResponse> getInternalDashboardRaw() {
+	public ResponseEntity<RestAPIResponse> getInternalDashboardRaw(
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer daysRange,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer panelItems) {
 		Long adminId = SecurityUtils.getCurrentAdminId();
 		java.time.LocalDate today = java.time.LocalDate.now();
 		int year = today.getYear();
 		int month = today.getMonthValue();
+		int effectiveDays = (daysRange != null && daysRange > 0) ? daysRange : 14;
+		int effectiveItems = (panelItems != null && panelItems > 0) ? panelItems : 20;
 
 		KpiRawDTO kpi = KpiRawDTO.builder()
 				.arOutstanding(safe(manualInvoiceRepository.sumArOutstanding(adminId)))
@@ -632,7 +636,7 @@ public class ManualInvoiceController1 {
 				.build();
 
 		List<InvoiceSnapshotDTO> upcoming = manualInvoiceRepository
-				.findUpcomingAndOverdue(adminId, today.plusDays(14), PageRequest.of(0, 20))
+				.findUpcomingAndOverdue(adminId, today.plusDays(effectiveDays), PageRequest.of(0, effectiveItems))
 				.stream().map(this::toInvoiceSnapshot).collect(Collectors.toList());
 
 		List<InvoiceSnapshotDTO> recentInvoices = manualInvoiceRepository

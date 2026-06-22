@@ -88,7 +88,7 @@ class InvoiceEmailServiceTest {
 		ManualInvoice invoice = buildInvoice();
 		List<String> emails = List.of("alice@example.com", "bob@example.com");
 
-		invoiceEmailService.sendInvoiceMail(emails, invoice);
+		invoiceEmailService.sendInvoiceMail(emails, invoice, Collections.emptyList());
 
 		// The send method should have been called once with the message
 		verify(mailSender, times(1)).send(mimeMessage);
@@ -112,7 +112,7 @@ class InvoiceEmailServiceTest {
 		List<String> invalidEmails = List.of("not-an-email", "also@@bad");
 
 		// Should not propagate any exception under the current implementation
-		assertDoesNotThrow(() -> invoiceEmailService.sendInvoiceMail(invalidEmails, invoice));
+		assertDoesNotThrow(() -> invoiceEmailService.sendInvoiceMail(invalidEmails, invoice, Collections.emptyList()));
 	}
 
 	// ------------------------------------------------------------------
@@ -133,7 +133,7 @@ class InvoiceEmailServiceTest {
 		List<String> mixed = List.of("valid@example.com", "invalid@@bad");
 
 		// Service is expected not to throw (it swallows exceptions)
-		assertDoesNotThrow(() -> invoiceEmailService.sendInvoiceMail(mixed, invoice));
+		assertDoesNotThrow(() -> invoiceEmailService.sendInvoiceMail(mixed, invoice, Collections.emptyList()));
 		// createMimeMessage should always be called
 		verify(mailSender, atLeastOnce()).createMimeMessage();
 	}
@@ -154,6 +154,6 @@ class InvoiceEmailServiceTest {
 		ManualInvoice invoice = buildInvoice();
 
 		// The service does not validate for empty lists before calling the helper
-		assertDoesNotThrow(() -> invoiceEmailService.sendInvoiceMail(Collections.emptyList(), invoice));
+		assertDoesNotThrow(() -> invoiceEmailService.sendInvoiceMail(Collections.emptyList(), invoice, Collections.emptyList()));
 	}
 }

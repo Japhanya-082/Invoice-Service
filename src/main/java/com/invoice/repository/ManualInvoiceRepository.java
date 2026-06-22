@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -111,6 +112,21 @@ public interface ManualInvoiceRepository
 
 	@Query("SELECT i FROM ManualInvoice i LEFT JOIN FETCH i.items WHERE LOWER(i.status) = 'overdue' AND i.dueDate = :today")
 	List<ManualInvoice> findOverdueInvoicesForToday(@Param("today") LocalDate today);
+
+	// Scheduler queries — per-admin overdue and upcoming-due invoices
+	@Query("SELECT i FROM ManualInvoice i LEFT JOIN FETCH i.items " +
+	       "WHERE i.adminId = :adminId AND LOWER(i.status) = 'overdue'")
+	List<ManualInvoice> findOverdueByAdmin(@Param("adminId") Long adminId, @Param("today") LocalDate today);
+
+	@Query("SELECT i FROM ManualInvoice i LEFT JOIN FETCH i.items " +
+	       "WHERE i.adminId = :adminId AND i.dueDate = :dueOn " +
+	       "AND LOWER(i.status) IN ('pending', 'partially_paid', 'partially paid')")
+	List<ManualInvoice> findDueOnByAdmin(@Param("adminId") Long adminId, @Param("dueOn") LocalDate dueOn);
+
+	@Modifying
+	@Query("UPDATE ManualInvoice i SET i.status = 'OVERDUE' " +
+	       "WHERE i.dueDate < :today AND LOWER(i.status) IN ('pending', 'partially_paid', 'partially paid')")
+	int markOverdueInvoices(@Param("today") LocalDate today);
 
 	boolean existsByConsultantId(Long consultantId);
 
