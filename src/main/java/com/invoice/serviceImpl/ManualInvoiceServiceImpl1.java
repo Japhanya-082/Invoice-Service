@@ -763,6 +763,9 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 		List<String> emails = Arrays.stream(email.split(",")).map(String::trim).filter(e -> !e.isEmpty()).toList();
 		invoiceEmailService.sendInvoiceMail(emails, invoice, buildCcList(adminId));
+		invoice.setStatus("PENDING");
+		invoice.setUpdatedAt(java.time.LocalDateTime.now());
+		invoiceRepository.save(invoice);
 	}
 
 	@Override

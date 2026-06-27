@@ -1,6 +1,7 @@
 package com.invoice.scheduler;
 
 import com.invoice.entity.AdminSettings;
+import com.invoice.entity.ManageUser;
 import com.invoice.entity.ManualInvoice;
 import com.invoice.repository.AdminSettingsRepository;
 import com.invoice.repository.ManageUserRepository;
@@ -13,7 +14,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,35 +31,25 @@ public class InvoiceAlertScheduler {
     private final ManageUserRepository manageUserRepository;
     private final EmailServiceImpl emailService;
 
-    /**
-     * Runs every day at 08:00 AM.
-     *
-     * Step 1 — Mark overdue: any Pending/Partially Paid invoice whose due date
-     *           has passed is flipped to OVERDUE in the DB.
-     *
-     * Step 2 — Overdue alerts: for every admin with overdueAlerts=true, send one
-     *           email per newly-overdue invoice to the customer's email address.
-     *
-     * Step 3 — Reminder alerts: for every admin with emailReminders=true, send a
-     *           reminder email for invoices due exactly N days from today
-     *           (where N = reminderDaysBefore setting).
-     */
-    @Scheduled(cron = "0 0 8 * * *")
+    private static final String DEFAULT_DAY  = "MON";
+    private static final String DEFAULT_TIME = "20:30";
+    private static final DateTimeFormatter TIME_FMT = DateTimeFormatter.ofPattern("HH:mm");
+
+    // Runs every minute; each admin's configured day+time controls when their alerts fire.
+    @Scheduled(cron = "0 * * * * *")
     @Transactional
     public void runDailyAlerts() {
         LocalDate today = LocalDate.now();
+        DayOfWeek todayDow = today.getDayOfWeek();
+        LocalTime nowTime = LocalTime.now().withSecond(0).withNano(0);
         log.info("[InvoiceAlertScheduler] Running daily alerts for {}", today);
 
-        // ── Step 1: mark overdue ──────────────────────────────────────────
-        int marked = invoiceRepository.markOverdueInvoices(today);
-        log.info("[InvoiceAlertScheduler] Marked {} invoice(s) as OVERDUE", marked);
-
-        // ── Step 2: overdue alert emails ──────────────────────────────────
+        // ── Step 1: overdue alert emails ──────────────────────────────────
         List<AdminSettings> overdueAdmins = adminSettingsRepository.findAllWithOverdueAlertsEnabled();
-        log.info("[InvoiceAlertScheduler] {} admin(s) have overdue alerts enabled", overdueAdmins.size());
 
         for (AdminSettings admin : overdueAdmins) {
             try {
+                if (!isScheduledNow(admin, todayDow, nowTime)) continue;
                 Long authAdminId = admin.getAdminId();
                 if (authAdminId == null) {
                     log.warn("[InvoiceAlertScheduler] No adminId mapped for {} — skipped", admin.getPrimaryEmail());
@@ -98,6 +92,7 @@ public class InvoiceAlertScheduler {
 
         for (AdminSettings admin : reminderAdmins) {
             try {
+                if (!isScheduledNow(admin, todayDow, nowTime)) continue;
                 int daysAhead = admin.getReminderDaysBefore();
                 LocalDate reminderDate = today.plusDays(daysAhead);
 
@@ -133,6 +128,20 @@ public class InvoiceAlertScheduler {
         log.info("[InvoiceAlertScheduler] Daily alerts complete");
     }
 
+    private boolean isScheduledNow(AdminSettings admin, DayOfWeek todayDow, LocalTime nowTime) {
+        String dayStr  = (admin.getSchedulerDay()  != null && !admin.getSchedulerDay().isBlank())  ? admin.getSchedulerDay().trim().toUpperCase()  : DEFAULT_DAY;
+        String timeStr = (admin.getSchedulerTime() != null && !admin.getSchedulerTime().isBlank()) ? admin.getSchedulerTime().trim() : DEFAULT_TIME;
+        try {
+            DayOfWeek configured = DayOfWeek.valueOf(dayStr);
+            LocalTime configuredTime = LocalTime.parse(timeStr, TIME_FMT);
+            return todayDow == configured && nowTime.equals(configuredTime);
+        } catch (Exception e) {
+            log.warn("[InvoiceAlertScheduler] Invalid scheduler config day='{}' time='{}' for {} — using defaults",
+                    dayStr, timeStr, admin.getPrimaryEmail());
+            return todayDow == DayOfWeek.MONDAY && nowTime.equals(LocalTime.parse(DEFAULT_TIME, TIME_FMT));
+        }
+    }
+
     private List<String> buildCcList(AdminSettings admin) {
         return manageUserRepository.findAdminAndHrByAdminId(admin.getAdminId())
                 .stream()
@@ -143,29 +152,32 @@ public class InvoiceAlertScheduler {
     }
 
     private UserDTO buildSender(AdminSettings admin) {
-        String companyAddress = manageUserRepository.findAdminAndHrByAdminId(admin.getAdminId())
+        ManageUser adminUser = manageUserRepository.findAdminAndHrByAdminId(admin.getAdminId())
                 .stream()
                 .filter(u -> "ADMIN".equalsIgnoreCase(u.getRoleName()))
                 .findFirst()
-                .map(u -> u.getFormattedAddress())
-                .orElse("");
+                .orElse(null);
+
+        String companyAddress = adminUser != null ? adminUser.getFormattedAddress() : "";
+        String fullName = adminUser != null && adminUser.getFullName() != null ? adminUser.getFullName() : admin.getPrimaryEmail();
+        String companyName = adminUser != null && adminUser.getCompanyName() != null ? adminUser.getCompanyName() : "";
 
         return manageUserRepository.findAccountantsByAdminId(admin.getAdminId())
                 .stream().findFirst()
                 .map(accountant -> new UserDTO(
                         accountant.getPrimaryEmail(),
-                        admin.getFullName() != null ? admin.getFullName() : accountant.getPrimaryEmail(),
+                        accountant.getFullName() != null ? accountant.getFullName() : accountant.getPrimaryEmail(),
                         null,
-                        admin.getCompanyName() != null ? admin.getCompanyName() : "",
+                        companyName,
                         null,
                         "Accountant",
                         companyAddress
                 ))
                 .orElseGet(() -> new UserDTO(
                         admin.getPrimaryEmail(),
-                        admin.getFullName() != null ? admin.getFullName() : admin.getPrimaryEmail(),
+                        fullName,
                         null,
-                        admin.getCompanyName() != null ? admin.getCompanyName() : "",
+                        companyName,
                         null,
                         "Admin",
                         companyAddress

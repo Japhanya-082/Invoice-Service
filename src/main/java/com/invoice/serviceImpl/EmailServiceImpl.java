@@ -46,41 +46,42 @@ public class EmailServiceImpl implements EmailService {
 				String[] cc = ccEmails.stream().filter(e -> e != null && !e.isBlank()).toArray(String[]::new);
 				if (cc.length > 0) helper.setCc(cc);
 			}
+			String htmlContent = "<p>Hi Team,</p>"
 
-			// HTML Email Body
-			String htmlContent = "<p>Hi Team,</p>" +
+					+ "<p>This is a reminder that the payment for the invoice generated for Consultant: " + "<b>"
+					+ consultantName
+					+ "</b> is due. We kindly request you to share the current payment status for the invoice.</p>"
 
-					"<p>We would like to inform you that the invoice generated for Consultant: " + "<b>"
-					+ consultantName + "</b> is still pending and has not been cleared.</p>" +
+					+ "<p><b>Below are the invoice details for your reference:</b></p>"
 
-					"<p><b>Below are the invoice details for your reference:</b></p>" +
-
-					"<p>" + "<b>Invoice Number :</b> " + invoice.getInvoiceNumber() + "<br>" + "<b>Invoice Date :</b> "
-					+ invoice.getInvoiceDate() + "<br>" + "<b>Amount Due :</b> "
+					+ "<p>" + "<b>Invoice Number :</b> " + invoice.getInvoiceNumber() + "<br>"
+					+ "<b>Invoice Date :</b> " + invoice.getInvoiceDate() + "<br>" + "<b>Amount Due :</b> "
 					+ (invoice.getAmountDue() == null ? "0" : invoice.getAmountDue().toPlainString()) + "<br>"
-					+ "<b>Due Date :</b> " + invoice.getDueDate() + "</p>" +
+					+ "<b>Due Date :</b> " + invoice.getDueDate() + "</p>"
 
-					"<p>"
-					+ "We kindly request you to prioritize this payment and complete it at the earliest to avoid any follow-ups.<br>"
-					+ "If the payment has already been initiated, please share the transaction reference for verification."
-					+ "</p>" +
+					+ "<p>If any payment has already been processed, please provide the remittance details so that we can update our records accordingly.</p>"
 
-					"<p>For any clarification or concerns, feel free to reach out to us.<br>"
-					+ "Thank you for your cooperation.</p>" +
+					+ "<p>Your prompt attention to this matter is appreciated.</p>"
 
-					"<p style='color:#1f4fd8; font-weight:bold;'>"
+					+ "<p>For any clarification or concerns, feel free to reach out to us.<br>"
+					+ "Thank you for your cooperation.</p>"
+
+					+ "<p style='color:#1f4fd8; font-weight:bold;'>"
 					+ (sender.getFullName() != null ? sender.getFullName() + "<br>" : "")
 					+ (sender.getRoleName() != null ? sender.getRoleName() + "<br>" : "")
-					+ (sender.getCompanyName() != null && !sender.getCompanyName().isBlank() ? sender.getCompanyName() + "<br>" : "")
-					+ (sender.getCompanyAddress() != null && !sender.getCompanyAddress().isBlank() ? sender.getCompanyAddress() + "<br>" : "")
-					+ sender.getEmail() + "<br>" + EmailSignatureConstants.TAGLINE + "</p>" +
+					+ (sender.getCompanyName() != null && !sender.getCompanyName().isBlank()
+							? sender.getCompanyName() + "<br>"
+							: "")
+					+ (sender.getCompanyAddress() != null && !sender.getCompanyAddress().isBlank()
+							? sender.getCompanyAddress() + "<br>"
+							: "")
+					+ sender.getEmail()+"</p>"
 
-					"<p style='color:red; font-weight:bold;'>" + EmailSignatureConstants.DISCLAIMER + "</p>";
+					+ "<p style='color:red; font-weight:bold;'>" + EmailSignatureConstants.DISCLAIMER + "</p>";
 
-			// Send as HTML
 			helper.setText(htmlContent, true);
-
 			mailSender.send(message);
+			
 
 			log.info("Overdue invoice email sent. Invoice={}, From={}, To={}, CC={}",
 					invoice.getInvoiceNumber(), sender.getEmail(), invoice.getCustomerEmail(), ccEmails);

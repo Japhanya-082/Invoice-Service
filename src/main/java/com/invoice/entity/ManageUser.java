@@ -26,6 +26,12 @@ public class ManageUser {
     @Column(name = "active")
     private Boolean active;
 
+    @Column(name = "full_name")
+    private String fullName;
+
+    @Column(name = "company_name")
+    private String companyName;
+
     @Column(name = "address")
     private String address;
 
@@ -40,6 +46,8 @@ public class ManageUser {
     public String getPrimaryEmail() { return primaryEmail; }
     public String getRoleName() { return roleName; }
     public Boolean getActive() { return active; }
+    public String getFullName() { return fullName; }
+    public String getCompanyName() { return companyName; }
     public String getAddress() { return address; }
     public String getCity() { return city; }
     public String getState() { return state; }

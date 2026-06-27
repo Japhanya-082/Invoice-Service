@@ -26,9 +26,28 @@ CREATE TABLE IF NOT EXISTS payments (
     updated_at          TIMESTAMP    NOT NULL DEFAULT NOW(),
     updated_by          BIGINT,
     deleted_at          TIMESTAMP,
-    CONSTRAINT fk_payments_invoice FOREIGN KEY (invoice_id)
-        REFERENCES invoice.manual_invoices(id) ON UPDATE NO ACTION ON DELETE RESTRICT
+    CONSTRAINT payments_invoice_id_nn CHECK (invoice_id IS NOT NULL)
 );
+
+-- Add FK only if manual_invoices already exists (it may be Hibernate-managed)
+DO $$
+BEGIN
+  IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'invoice' AND table_name = 'manual_invoices'
+  ) THEN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE table_schema = 'invoice' AND table_name = 'payments'
+          AND constraint_name = 'fk_payments_invoice'
+    ) THEN
+      ALTER TABLE invoice.payments
+        ADD CONSTRAINT fk_payments_invoice
+          FOREIGN KEY (invoice_id)
+          REFERENCES invoice.manual_invoices(id) ON UPDATE NO ACTION ON DELETE RESTRICT;
+    END IF;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_payments_invoice          ON payments (invoice_id);
 CREATE INDEX IF NOT EXISTS idx_payments_admin            ON payments (admin_id);
@@ -104,15 +123,23 @@ AFTER INSERT OR UPDATE OR DELETE ON invoice.payments
 FOR EACH ROW EXECUTE FUNCTION invoice.payments_after_change();
 
 -- Initial backfill: derive paid_amount / amount_due / status for existing rows.
--- Without payments rows yet, paid = 0 and amount_due = total.
-UPDATE invoice.manual_invoices
-   SET paid_amount = 0,
-       amount_due  = COALESCE(total, 0),
-       status      = CASE
-                       WHEN LOWER(COALESCE(status,'')) IN ('paid','received')                  THEN 'PAID'
-                       WHEN LOWER(COALESCE(status,'')) IN ('partially_paid','partially received','partial') THEN 'PARTIALLY_PAID'
-                       WHEN LOWER(COALESCE(status,'')) IN ('cancelled','canceled')             THEN 'CANCELLED'
-                       WHEN LOWER(COALESCE(status,'')) IN ('draft')                            THEN 'DRAFT'
-                       WHEN LOWER(COALESCE(status,'')) IN ('overdue')                          THEN 'OVERDUE'
-                       ELSE 'PENDING'
-                     END;
+-- Guarded: manual_invoices may not exist yet if it is Hibernate-managed.
+DO $$
+BEGIN
+  IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'invoice' AND table_name = 'manual_invoices'
+  ) THEN
+    UPDATE invoice.manual_invoices
+       SET paid_amount = 0,
+           amount_due  = COALESCE(total, 0),
+           status      = CASE
+                           WHEN LOWER(COALESCE(status,'')) IN ('paid','received')                              THEN 'PAID'
+                           WHEN LOWER(COALESCE(status,'')) IN ('partially_paid','partially received','partial') THEN 'PARTIALLY_PAID'
+                           WHEN LOWER(COALESCE(status,'')) IN ('cancelled','canceled')                         THEN 'CANCELLED'
+                           WHEN LOWER(COALESCE(status,'')) IN ('draft')                                        THEN 'DRAFT'
+                           WHEN LOWER(COALESCE(status,'')) IN ('overdue')                                      THEN 'OVERDUE'
+                           ELSE 'PENDING'
+                         END;
+  END IF;
+END $$;

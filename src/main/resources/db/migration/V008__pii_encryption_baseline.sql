@@ -47,25 +47,34 @@ BEGIN
     END IF;
 END $$;
 
--- Masked view for reporting / API export ----------------------------------------
-CREATE OR REPLACE VIEW invoice.v_consultant_masked AS
-SELECT
-    c.id,
-    c.cid,
-    c.first_name,
-    c.last_name,
-    c.email,
-    c.mobile_number,
-    -- SSN: '***-**-1234' if at least 4 chars; else null
-    CASE
-        WHEN c.security_number IS NULL OR LENGTH(c.security_number) < 4 THEN NULL
-        ELSE '***-**-' || RIGHT(REGEXP_REPLACE(c.security_number, '[^0-9]', '', 'g'), 4)
-    END AS security_number_masked,
-    c.status,
-    c.admin_id,
-    c.created_at,
-    c.updated_at
-  FROM invoice.consultant c;
+-- Masked view for reporting / API export (guarded: consultant may be Hibernate-managed)
+DO $$
+BEGIN
+  IF EXISTS (
+      SELECT 1 FROM information_schema.tables
+      WHERE table_schema = 'invoice' AND table_name = 'consultant'
+  ) THEN
+    EXECUTE $view$
+      CREATE OR REPLACE VIEW invoice.v_consultant_masked AS
+      SELECT
+          c.id,
+          c.cid,
+          c.first_name,
+          c.last_name,
+          c.email,
+          c.mobile_number,
+          CASE
+              WHEN c.security_number IS NULL OR LENGTH(c.security_number) < 4 THEN NULL
+              ELSE '***-**-' || RIGHT(REGEXP_REPLACE(c.security_number, '[^0-9]', '', 'g'), 4)
+          END AS security_number_masked,
+          c.status,
+          c.admin_id,
+          c.created_at,
+          c.updated_at
+        FROM invoice.consultant c
+    $view$;
+  END IF;
+END $$;
 
 -- Backfill helper. Operators run with the encryption key in session and the row
 -- IDs they want migrated. Example:
@@ -77,11 +86,14 @@ RETURNS INTEGER LANGUAGE plpgsql AS $$
 DECLARE
     rows_updated INTEGER := 0;
 BEGIN
-    UPDATE invoice.consultant
-       SET security_number_enc = pgp_sym_encrypt(security_number, p_key)
-     WHERE security_number IS NOT NULL
-       AND security_number_enc IS NULL;
-    GET DIAGNOSTICS rows_updated = ROW_COUNT;
+    IF EXISTS (SELECT 1 FROM information_schema.tables
+               WHERE table_schema='invoice' AND table_name='consultant') THEN
+        UPDATE invoice.consultant
+           SET security_number_enc = pgp_sym_encrypt(security_number, p_key)
+         WHERE security_number IS NOT NULL
+           AND security_number_enc IS NULL;
+        GET DIAGNOSTICS rows_updated = ROW_COUNT;
+    END IF;
     RETURN rows_updated;
 END $$;
 

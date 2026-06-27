@@ -113,14 +113,22 @@ public interface ManualInvoiceRepository
 	@Query("SELECT i FROM ManualInvoice i LEFT JOIN FETCH i.items WHERE LOWER(i.status) = 'overdue' AND i.dueDate = :today")
 	List<ManualInvoice> findOverdueInvoicesForToday(@Param("today") LocalDate today);
 
-	// Scheduler queries — per-admin overdue and upcoming-due invoices
+	// Scheduler queries — per-admin overdue and upcoming-due AR (receivable) invoices only
+	// Skips invoices snoozed until a future date
 	@Query("SELECT i FROM ManualInvoice i LEFT JOIN FETCH i.items " +
-	       "WHERE i.adminId = :adminId AND LOWER(i.status) = 'overdue'")
+	       "WHERE i.adminId = :adminId AND i.dueDate < :today " +
+	       "AND LOWER(i.status) IN ('pending', 'partially_received', 'partially received') " +
+	       "AND LOWER(i.vendorType) = 'receivable' " +
+	       "AND i.deletedAt IS NULL " +
+	       "AND (i.reminderSnoozedUntil IS NULL OR i.reminderSnoozedUntil < :today)")
 	List<ManualInvoice> findOverdueByAdmin(@Param("adminId") Long adminId, @Param("today") LocalDate today);
 
 	@Query("SELECT i FROM ManualInvoice i LEFT JOIN FETCH i.items " +
 	       "WHERE i.adminId = :adminId AND i.dueDate = :dueOn " +
-	       "AND LOWER(i.status) IN ('pending', 'partially_paid', 'partially paid')")
+	       "AND LOWER(i.vendorType) = 'receivable' " +
+	       "AND LOWER(i.status) IN ('pending', 'partially_received', 'partially received') " +
+	       "AND i.deletedAt IS NULL " +
+	       "AND (i.reminderSnoozedUntil IS NULL OR i.reminderSnoozedUntil < :dueOn)")
 	List<ManualInvoice> findDueOnByAdmin(@Param("adminId") Long adminId, @Param("dueOn") LocalDate dueOn);
 
 	@Modifying

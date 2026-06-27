@@ -38,6 +38,12 @@ public class AdminSettings {
     @Column(name = "admin_id")
     private Long adminId;
 
+    @Column(name = "scheduler_day")
+    private String schedulerDay;
+
+    @Column(name = "scheduler_time")
+    private String schedulerTime;
+
     @Column(name = "cc_admin_email")
     private String ccAdminEmail;
 
@@ -56,6 +62,8 @@ public class AdminSettings {
     public String getFullName() { return fullName; }
     public String getCompanyName() { return companyName; }
     public Long getAdminId() { return adminId; }
+    public String getSchedulerDay() { return schedulerDay; }
+    public String getSchedulerTime() { return schedulerTime; }
     public String getCcAdminEmail() { return ccAdminEmail; }
     public String getCcHrEmail() { return ccHrEmail; }
     public String getCcAccountsEmail() { return ccAccountsEmail; }

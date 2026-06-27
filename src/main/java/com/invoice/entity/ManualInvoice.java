@@ -158,6 +158,9 @@ public class ManualInvoice {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
+	@Column(name = "reminder_snoozed_until")
+	private LocalDate reminderSnoozedUntil;
+
 	// Billing Address
 	@Embedded
 	@AttributeOverrides({ @AttributeOverride(name = "street", column = @Column(name = "billing_street")),
