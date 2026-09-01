@@ -94,6 +94,7 @@ public class SchemaProvisioningController {
 		}
 	}
 
+	
 	/**
 	 * Clones every BASE TABLE from sourceSchema into targetSchema. Returns list of
 	 * cloned table names.
@@ -114,6 +115,7 @@ public class SchemaProvisioningController {
 		return cloned;
 	}
 
+	
 	private static List<String> getBaseTables(Connection conn, String schema) throws SQLException {
 		List<String> tables = new ArrayList<>();
 		String sql = "SELECT table_name FROM information_schema.tables "
@@ -139,6 +141,7 @@ public class SchemaProvisioningController {
 		log.debug("Cloned table '{}' → '{}'", table, tgt);
 	}
 
+	
 	/**
 	 * Corrects AR/AP status separation in the given schema.
 	 * Receivable invoices get RECEIVED-family statuses; payable get PAID-family.
@@ -172,6 +175,7 @@ public class SchemaProvisioningController {
 		}
 	}
 
+	
 	private static void fixSequences(Connection conn, String tgtSchema, String table) throws SQLException {
 		String sql = "SELECT column_name FROM information_schema.columns "
 				+ "WHERE table_schema = ? AND table_name = ? AND column_default LIKE 'nextval%'";
@@ -194,3 +198,4 @@ public class SchemaProvisioningController {
 		}
 	}
 }
+

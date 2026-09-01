@@ -25,4 +25,5 @@ public class InvoiceSnapshotDTO {
     private BigDecimal total;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    
 }

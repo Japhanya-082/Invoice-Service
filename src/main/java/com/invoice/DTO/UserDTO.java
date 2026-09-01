@@ -13,4 +13,5 @@ public class UserDTO {
 	private String organizationName;
 	private String roleName;
 	private String companyAddress;
+	
 }

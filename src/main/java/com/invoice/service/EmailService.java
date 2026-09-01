@@ -9,6 +9,7 @@ public interface EmailService {
 
 	public void sendOverdueInvoiceEmail(UserDTO user, ManualInvoice invoice, List<String> ccEmails);
 
+	
 	public void sendPaymentReminderEmail(UserDTO user, ManualInvoice invoice, int daysUntilDue, List<String> ccEmails);
 
 }

@@ -28,8 +28,10 @@ public class SecurityConfig {
 	@Value("${cors.allowed-origins:http://localhost:4200}")
 	private String allowedOrigins;
 
+	
 	private final TenantFilter tenantFilter;
 
+	
 	public SecurityConfig(TenantFilter tenantFilter) {
 		this.tenantFilter = tenantFilter;
 	}
@@ -43,9 +45,11 @@ public class SecurityConfig {
 		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 		config.setMaxAge(3600L);
 
+		
 		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
 		source.registerCorsConfiguration("/**", config);
 
+		
 		FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
 		bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
 		return bean;
@@ -72,6 +76,7 @@ public class SecurityConfig {
 		return http.build();
 	}
 
+	
 	@Bean
 	public FilterRegistrationBean<TenantFilter> tenantFilterRegistration(TenantFilter filter) {
 		FilterRegistrationBean<TenantFilter> registration = new FilterRegistrationBean<>(filter);
@@ -79,6 +84,7 @@ public class SecurityConfig {
 		return registration;
 	}
 
+	
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration config = new CorsConfiguration();
@@ -96,3 +102,4 @@ public class SecurityConfig {
 		return source;
 	}
 }
+

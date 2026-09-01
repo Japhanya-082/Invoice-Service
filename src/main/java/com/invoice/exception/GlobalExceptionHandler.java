@@ -41,6 +41,7 @@ public class GlobalExceptionHandler {
 				.body(new RestAPIResponse("fail", ex.getMessage(), null));
 	}
 
+	
 	// ===== Added standardized handlers =====
 
 	@ExceptionHandler(SecurityUtils.SecurityIntegrityException.class)
@@ -50,6 +51,7 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
 				.body(stdBody(HttpStatus.FORBIDDEN, ex.getMessage(), request));
 	}
+	
 
 	@ExceptionHandler(AccessDeniedException.class)
 	public ResponseEntity<Map<String, Object>> handleAccessDenied(
@@ -58,6 +60,7 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.FORBIDDEN)
 				.body(stdBody(HttpStatus.FORBIDDEN, "Access denied: insufficient privileges", request));
 	}
+	
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
 	public ResponseEntity<Map<String, Object>> handleMethodArgNotValid(
@@ -74,6 +77,7 @@ public class GlobalExceptionHandler {
 		resp.put("errors", fieldErrors);
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(resp);
 	}
+	
 
 	@ExceptionHandler(ConstraintViolationException.class)
 	public ResponseEntity<Map<String, Object>> handleConstraintViolation(
@@ -90,6 +94,7 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST)
 				.body(stdBody(HttpStatus.BAD_REQUEST, ex.getMessage(), request));
 	}
+	
 
 	@ExceptionHandler(OptimisticLockingFailureException.class)
 	public ResponseEntity<Map<String, Object>> handleOptimisticLocking(
@@ -99,6 +104,7 @@ public class GlobalExceptionHandler {
 				.body(stdBody(HttpStatus.CONFLICT, "Resource was modified by another transaction", request));
 	}
 
+	
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	public ResponseEntity<Map<String, Object>> handleDataIntegrity(
 			DataIntegrityViolationException ex, HttpServletRequest request) {
@@ -107,6 +113,7 @@ public class GlobalExceptionHandler {
 				.body(stdBody(HttpStatus.CONFLICT, "Data integrity violation", request));
 	}
 
+	
 	private Map<String, Object> stdBody(HttpStatus status, String message, HttpServletRequest request) {
 		Map<String, Object> b = new LinkedHashMap<>();
 		b.put("status", status.value());
@@ -115,4 +122,5 @@ public class GlobalExceptionHandler {
 		b.put("path", request.getRequestURI());
 		return b;
 	}
+	
 }

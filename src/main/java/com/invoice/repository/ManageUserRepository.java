@@ -13,11 +13,13 @@ public interface ManageUserRepository extends JpaRepository<ManageUser, Long> {
            "AND UPPER(u.roleName) IN ('ADMIN', 'HR', 'ACCOUNTANT') " +
            "AND u.active = true")
     List<ManageUser> findCcRecipientsByAdminId(@Param("adminId") Long adminId);
-
+    
+    
     @Query("SELECT u FROM ManageUser u WHERE u.adminId = :adminId " +
            "AND UPPER(u.roleName) = 'ACCOUNTANT' AND u.active = true")
     List<ManageUser> findAccountantsByAdminId(@Param("adminId") Long adminId);
 
+    
     @Query("SELECT u FROM ManageUser u WHERE u.adminId = :adminId " +
            "AND UPPER(u.roleName) IN ('ADMIN', 'HR') AND u.active = true")
     List<ManageUser> findAdminAndHrByAdminId(@Param("adminId") Long adminId);

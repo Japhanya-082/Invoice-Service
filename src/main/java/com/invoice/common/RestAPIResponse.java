@@ -11,6 +11,7 @@ import lombok.Data;
 
 @Data
 @AllArgsConstructor
+
 public class RestAPIResponse {
 	public String status;
 	public String message;
@@ -48,7 +49,6 @@ public class RestAPIResponse {
 		this.data = data;
 	}
 	
-
 	public RestAPIResponse(String status, Object data) {
 		this();
 		this.status = status;

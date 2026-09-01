@@ -192,6 +192,7 @@ public class ManualInvoice {
 		items.clear();
 	}
 
+	
 //	/** Statuses permitted by the DB check constraint ck_manual_invoices_status. */
 //	private static final java.util.Set<String> ALLOWED_STATUSES = java.util.Set.of(
 //			"DRAFT", "PENDING", "RECEIVED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED");
@@ -231,6 +232,7 @@ public class ManualInvoice {
 //		}
 //		status = s;
 //	}
+	
 	
 	/** Statuses permitted by the DB check constraint. */
 	private static final Set<String> ALLOWED_STATUSES = Set.of(
@@ -287,6 +289,5 @@ public class ManualInvoice {
 
 	    status = s;
 	}
-	
 	
 }

@@ -28,6 +28,7 @@ public class Payment {
 
     public enum Status { POSTED, VOIDED, PENDING, RETURNED }
 
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "payment_id")

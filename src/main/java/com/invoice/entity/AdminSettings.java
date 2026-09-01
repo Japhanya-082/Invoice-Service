@@ -11,6 +11,7 @@ import org.hibernate.annotations.Immutable;
 @Table(name = "updated_profile", schema = "invoice")
 public class AdminSettings {
 
+	
     @Id
     private Long id;
 

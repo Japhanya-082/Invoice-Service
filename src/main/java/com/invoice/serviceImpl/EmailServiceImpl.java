@@ -44,7 +44,8 @@ public class EmailServiceImpl implements EmailService {
 
 			if (ccEmails != null && !ccEmails.isEmpty()) {
 				String[] cc = ccEmails.stream().filter(e -> e != null && !e.isBlank()).toArray(String[]::new);
-				if (cc.length > 0) helper.setCc(cc);
+				if (cc.length > 0)
+					helper.setCc(cc);
 			}
 			String htmlContent = "<p>Hi Team,</p>"
 
@@ -75,16 +76,15 @@ public class EmailServiceImpl implements EmailService {
 					+ (sender.getCompanyAddress() != null && !sender.getCompanyAddress().isBlank()
 							? sender.getCompanyAddress() + "<br>"
 							: "")
-					+ sender.getEmail()+"</p>"
+					+ sender.getEmail() + "</p>"
 
 					+ "<p style='color:red; font-weight:bold;'>" + EmailSignatureConstants.DISCLAIMER + "</p>";
 
 			helper.setText(htmlContent, true);
 			mailSender.send(message);
-			
 
-			log.info("Overdue invoice email sent. Invoice={}, From={}, To={}, CC={}",
-					invoice.getInvoiceNumber(), sender.getEmail(), invoice.getCustomerEmail(), ccEmails);
+			log.info("Overdue invoice email sent. Invoice={}, From={}, To={}, CC={}", invoice.getInvoiceNumber(),
+					sender.getEmail(), invoice.getCustomerEmail(), ccEmails);
 
 		} catch (Exception e) {
 			log.error("Failed to send overdue invoice email", e);
@@ -93,7 +93,8 @@ public class EmailServiceImpl implements EmailService {
 	}
 
 	@Override
-	public void sendPaymentReminderEmail(UserDTO sender, ManualInvoice invoice, int daysUntilDue, List<String> ccEmails) {
+	public void sendPaymentReminderEmail(UserDTO sender, ManualInvoice invoice, int daysUntilDue,
+			List<String> ccEmails) {
 		try {
 			MimeMessage message = mailSender.createMimeMessage();
 			MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
@@ -103,44 +104,43 @@ public class EmailServiceImpl implements EmailService {
 				consultantName = invoice.getItems().get(0).getName();
 			}
 
-			helper.setSubject("Payment Reminder – Invoice " + invoice.getInvoiceNumber()
-					+ " due in " + daysUntilDue + " day(s)");
+			helper.setSubject(
+					"Payment Reminder – Invoice " + invoice.getInvoiceNumber() + " due in " + daysUntilDue + " day(s)");
 			helper.setTo(invoice.getCustomerEmail());
 			helper.setFrom(sender.getEmail());
 
 			if (ccEmails != null && !ccEmails.isEmpty()) {
 				String[] cc = ccEmails.stream().filter(e -> e != null && !e.isBlank()).toArray(String[]::new);
-				if (cc.length > 0) helper.setCc(cc);
+				if (cc.length > 0)
+					helper.setCc(cc);
 			}
 
 			String htmlContent = "<p>Hi Team,</p>"
 					+ "<p>This is a friendly reminder that the following invoice is due in <b>" + daysUntilDue
-					+ " day(s)</b>.</p>"
-					+ "<p><b>Invoice Details:</b></p>"
-					+ "<p>"
-					+ "<b>Invoice Number :</b> " + invoice.getInvoiceNumber() + "<br>"
-					+ "<b>Consultant :</b> " + consultantName + "<br>"
-					+ "<b>Invoice Date :</b> " + invoice.getInvoiceDate() + "<br>"
-					+ "<b>Due Date :</b> " + invoice.getDueDate() + "<br>"
-					+ "<b>Amount Due :</b> "
-					+ (invoice.getAmountDue() == null ? "0" : invoice.getAmountDue().toPlainString())
-					+ "</p>"
+					+ " day(s)</b>.</p>" + "<p><b>Invoice Details:</b></p>" + "<p>" + "<b>Invoice Number :</b> "
+					+ invoice.getInvoiceNumber() + "<br>" + "<b>Consultant :</b> " + consultantName + "<br>"
+					+ "<b>Invoice Date :</b> " + invoice.getInvoiceDate() + "<br>" + "<b>Due Date :</b> "
+					+ invoice.getDueDate() + "<br>" + "<b>Amount Due :</b> "
+					+ (invoice.getAmountDue() == null ? "0" : invoice.getAmountDue().toPlainString()) + "</p>"
 					+ "<p>Please ensure payment is made before the due date to avoid any delays.</p>"
 					+ "<p>Thank you for your continued partnership.</p>"
 					+ "<p style='color:#1f4fd8; font-weight:bold;'>"
 					+ (sender.getFullName() != null ? sender.getFullName() + "<br>" : "")
 					+ (sender.getRoleName() != null ? sender.getRoleName() + "<br>" : "")
-					+ (sender.getCompanyName() != null && !sender.getCompanyName().isBlank() ? sender.getCompanyName() + "<br>" : "")
-					+ (sender.getCompanyAddress() != null && !sender.getCompanyAddress().isBlank() ? sender.getCompanyAddress() + "<br>" : "")
-					+ sender.getEmail() + "</p>"
-					+ "<p style='color:red; font-weight:bold;'>"
+					+ (sender.getCompanyName() != null && !sender.getCompanyName().isBlank()
+							? sender.getCompanyName() + "<br>"
+							: "")
+					+ (sender.getCompanyAddress() != null && !sender.getCompanyAddress().isBlank()
+							? sender.getCompanyAddress() + "<br>"
+							: "")
+					+ sender.getEmail() + "</p>" + "<p style='color:red; font-weight:bold;'>"
 					+ EmailSignatureConstants.DISCLAIMER + "</p>";
 
 			helper.setText(htmlContent, true);
 			mailSender.send(message);
 
-			log.info("Payment reminder email sent. Invoice={}, DueIn={}d, To={}, CC={}",
-					invoice.getInvoiceNumber(), daysUntilDue, invoice.getCustomerEmail(), ccEmails);
+			log.info("Payment reminder email sent. Invoice={}, DueIn={}d, To={}, CC={}", invoice.getInvoiceNumber(),
+					daysUntilDue, invoice.getCustomerEmail(), ccEmails);
 
 		} catch (Exception e) {
 			log.error("Failed to send payment reminder email", e);

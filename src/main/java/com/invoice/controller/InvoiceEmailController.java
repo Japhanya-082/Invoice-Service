@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 public class InvoiceEmailController {
 
 	private final InvoiceEmailServiceImpl invoiceEmailService;
+	
 	private final InvoiceAlertScheduler invoiceAlertScheduler;
 
 	@PostMapping("/send-overdue-email/{invoiceNumber}")
@@ -33,6 +34,7 @@ public class InvoiceEmailController {
 		}
 	}
 
+	
 	/** Manual trigger for testing — runs the full daily scheduler immediately. */
 	@PostMapping("/run-daily-alerts")
 	public ResponseEntity<Map<String, Object>> runDailyAlerts() {

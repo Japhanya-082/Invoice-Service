@@ -16,4 +16,5 @@ public class DashboardRawDataDTO {
     private List<InvoiceSnapshotDTO> upcomingInvoices;
     private List<InvoiceSnapshotDTO> recentInvoices;
     private List<PaymentSnapshotDTO> recentPayments;
+    
 }

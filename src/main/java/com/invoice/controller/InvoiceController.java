@@ -49,6 +49,7 @@ public class InvoiceController {
 		}
 	}
 
+	
 	@GetMapping("/getData")
 	public ResponseEntity<Map<String, Object>> getAllInvoices() {
 		Map<String, Object> response = new HashMap<>();
@@ -68,6 +69,7 @@ public class InvoiceController {
 		}
 	}
 
+	
 	@DeleteMapping("/{invoiceId}")
 	public ResponseEntity<RestAPIResponse> deleteInvoice(@PathVariable Long invoiceId) {
 		try {
@@ -80,3 +82,4 @@ public class InvoiceController {
 		}
 	}
 }
+

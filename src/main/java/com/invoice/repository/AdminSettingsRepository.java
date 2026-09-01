@@ -20,4 +20,5 @@ public interface AdminSettingsRepository extends JpaRepository<AdminSettings, Lo
 
     @Query("SELECT a FROM AdminSettings a WHERE a.emailReminders = true AND a.reminderDaysBefore IS NOT NULL")
     List<AdminSettings> findAllWithEmailRemindersEnabled();
+    
 }

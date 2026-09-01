@@ -36,7 +36,8 @@ public class InvoiceEmailService {
 
 			if (ccEmails != null && !ccEmails.isEmpty()) {
 				String[] cc = ccEmails.stream().filter(e -> e != null && !e.isBlank()).toArray(String[]::new);
-				if (cc.length > 0) helper.setCc(cc);
+				if (cc.length > 0)
+					helper.setCc(cc);
 			}
 			helper.setSubject("Invoice Generated - " + invoice.getInvoiceNumber());
 

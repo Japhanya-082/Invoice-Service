@@ -11,15 +11,15 @@ import java.util.List;
 
 public interface PaymentService {
 
-    Payment recordPayment(PaymentRequest request);
+	Payment recordPayment(PaymentRequest request);
 
-    Payment voidPayment(Long paymentId, String reason);
+	Payment voidPayment(Long paymentId, String reason);
 
-    List<Payment> getPaymentsForInvoice(Long invoiceId);
+	List<Payment> getPaymentsForInvoice(Long invoiceId);
 
-    Page<Payment> listPayments(Pageable pageable);
+	Page<Payment> listPayments(Pageable pageable);
 
-    Page<Payment> listPaymentsByDateRange(LocalDate from, LocalDate to, Pageable pageable);
+	Page<Payment> listPaymentsByDateRange(LocalDate from, LocalDate to, Pageable pageable);
 
-    BigDecimal getInvoiceBalance(Long invoiceId);
+	BigDecimal getInvoiceBalance(Long invoiceId);
 }

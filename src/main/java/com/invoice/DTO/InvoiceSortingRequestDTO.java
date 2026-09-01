@@ -14,5 +14,4 @@ public class InvoiceSortingRequestDTO {
 	private String vendorType;
 	private String status;
 	private Long invoiceId;
-
 }

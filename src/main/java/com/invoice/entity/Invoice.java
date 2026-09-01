@@ -25,7 +25,6 @@ public class Invoice {
 
 	private Long consultantId;
 
-	
 	private String invoiceNumber;
 	private LocalDate date;
 	private LocalDate dueDate;
@@ -44,5 +43,4 @@ public class Invoice {
 	@UpdateTimestamp
 	private LocalDateTime updatedAt;
 
-	
 }

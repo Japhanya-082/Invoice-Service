@@ -77,25 +77,24 @@ public class InvoiceEmailServiceImpl implements InvoiceEmailService {
 		// 5️ Resolve sender (ACCOUNTANT) and CC (ADMIN + HR) from manage_users
 		Long authAdminId = invoice.getAdminId();
 
-		String companyAddress = manageUserRepository.findAdminAndHrByAdminId(authAdminId)
-				.stream()
-				.filter(u -> "ADMIN".equalsIgnoreCase(u.getRoleName()))
-				.findFirst()
-				.map(u -> u.getFormattedAddress())
+		String companyAddress = manageUserRepository.findAdminAndHrByAdminId(authAdminId).stream()
+				.filter(u -> "ADMIN".equalsIgnoreCase(u.getRoleName())).findFirst().map(u -> u.getFormattedAddress())
 				.orElse("");
 
-		UserDTO sender = manageUserRepository.findAccountantsByAdminId(authAdminId)
-				.stream().findFirst()
-				.map(a -> new UserDTO(a.getPrimaryEmail(), loggedInUser.getFullName(),
-						null, loggedInUser.getCompanyName(), null, "Accountant", companyAddress))
-				.orElseGet(() -> new UserDTO(loggedInUser.getEmail(), loggedInUser.getFullName(),
-						null, loggedInUser.getCompanyName(), null, loggedInUser.getRoleName(), companyAddress)); // fall back to logged-in user if no accountant exists
+		UserDTO sender = manageUserRepository.findAccountantsByAdminId(authAdminId).stream().findFirst()
+				.map(a -> new UserDTO(a.getPrimaryEmail(), loggedInUser.getFullName(), null,
+						loggedInUser.getCompanyName(), null, "Accountant", companyAddress))
+				.orElseGet(() -> new UserDTO(loggedInUser.getEmail(), loggedInUser.getFullName(), null,
+						loggedInUser.getCompanyName(), null, loggedInUser.getRoleName(), companyAddress)); // fall back
+																											// to
+																											// logged-in
+																											// user if
+																											// no
+																											// accountant
+																											// exists
 
-		List<String> cc = manageUserRepository.findAdminAndHrByAdminId(authAdminId)
-				.stream()
-				.map(u -> u.getPrimaryEmail())
-				.filter(e -> e != null && !e.isBlank())
-				.distinct()
+		List<String> cc = manageUserRepository.findAdminAndHrByAdminId(authAdminId).stream()
+				.map(u -> u.getPrimaryEmail()).filter(e -> e != null && !e.isBlank()).distinct()
 				.collect(java.util.stream.Collectors.toList());
 
 		// 6️ Send email

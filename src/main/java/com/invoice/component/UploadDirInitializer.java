@@ -22,4 +22,5 @@ public class UploadDirInitializer {
 	public void createUploadDir() {
 		log.info("Upload directory '{}' is managed by InvoiceServiceImpl.", uploadDir);
 	}
+	
 }
