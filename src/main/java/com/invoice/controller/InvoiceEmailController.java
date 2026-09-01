@@ -3,6 +3,7 @@ package com.invoice.controller;
 import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import com.invoice.scheduler.InvoiceAlertScheduler;
@@ -35,8 +36,13 @@ public class InvoiceEmailController {
 	}
 
 	
-	/** Manual trigger for testing — runs the full daily scheduler immediately. */
+	/**
+	 * Manual trigger for testing — runs the full daily scheduler immediately.
+	 * Restricted: this fans out email to every matching customer and vendor, so an
+	 * unauthenticated caller could use it to mail-bomb recipients or exhaust the SMTP quota.
+	 */
 	@PostMapping("/run-daily-alerts")
+	@PreAuthorize("hasAnyRole('INTERNAL','ADMIN')")
 	public ResponseEntity<Map<String, Object>> runDailyAlerts() {
 		try {
 			invoiceAlertScheduler.runDailyAlerts();

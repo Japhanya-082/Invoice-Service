@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,7 +22,17 @@ import java.util.List;
 public class SchemaProvisioningController {
 
 	private static final String SOURCE_SCHEMA = "invoice";
+
+	/**
+	 * Schema names are concatenated into DDL that cannot be parameterised, so the value is
+	 * constrained to an unambiguous PostgreSQL identifier before it ever reaches a statement.
+	 * Anything containing a quote, semicolon, whitespace or non-ASCII character is rejected.
+	 */
+	private static final java.util.regex.Pattern VALID_SCHEMA_NAME =
+			java.util.regex.Pattern.compile("^[a-z][a-z0-9_]{0,62}$");
 	private static final List<String> EXCLUDED_TABLES = List.of("flyway_schema_history");
+	private static final List<String> EXCLUDED_SCHEMAS =
+			List.of("public", "information_schema", "pg_catalog", "pg_toast");
 
 	private final DataSource rawDataSource;
 
@@ -59,7 +70,17 @@ public class SchemaProvisioningController {
 	 * multiple times.
 	 */
 	@PostMapping("/provision-schema/{schemaName}")
+	@PreAuthorize("hasRole('INTERNAL')")
 	public ResponseEntity<String> provisionSchema(@PathVariable("schemaName") String schemaName) {
+		if (schemaName == null || !VALID_SCHEMA_NAME.matcher(schemaName).matches()) {
+			log.warn("Rejected schema provisioning — illegal schema name supplied");
+			return ResponseEntity.badRequest()
+					.body("Invalid schema name: must match ^[a-z][a-z0-9_]{0,62}$");
+		}
+		if (SOURCE_SCHEMA.equals(schemaName) || EXCLUDED_SCHEMAS.contains(schemaName)) {
+			log.warn("Rejected schema provisioning — reserved schema '{}'", schemaName);
+			return ResponseEntity.badRequest().body("Reserved schema name: " + schemaName);
+		}
 		log.info("Invoice-Service: provisioning schema '{}'", schemaName);
 		try (Connection conn = rawDataSource.getConnection()) {
 			createSchema(conn, schemaName);

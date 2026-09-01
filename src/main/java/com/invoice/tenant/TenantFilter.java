@@ -81,8 +81,7 @@ public class TenantFilter extends OncePerRequestFilter {
 	}
 
 	private boolean isExempt(String path) {
-		return path.startsWith("/actuator/health") || path.startsWith("/actuator/info")
-				|| path.startsWith("/internal/provision-schema/");
+		return path.startsWith("/actuator/health") || path.startsWith("/actuator/info");
 	}
 
 	private boolean isTrustedInternalCall(HttpServletRequest request) {
@@ -127,12 +126,15 @@ public class TenantFilter extends OncePerRequestFilter {
 
 	private void applyInternalHeaders(HttpServletRequest request) {
 		Long adminId = coerceLong(request.getHeader("X-Admin-Id"));
-		if (adminId == null)
-			return;
-		TenantContext.setCurrentAdminId(adminId);
+		if (adminId != null) {
+			TenantContext.setCurrentAdminId(adminId);
+		}
 		String tenantHeader = request.getHeader("X-Tenant-Id");
 		if (StringUtils.hasText(tenantHeader))
 			TenantContext.setCurrentTenant(tenantHeader.trim());
+		// Authenticate on the strength of the shared key alone. Tenant provisioning runs
+		// before any adminId exists, so requiring X-Admin-Id here would 401 the very call
+		// that creates the tenant.
 		UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken("internal-service", null,
 				List.of(new SimpleGrantedAuthority("ROLE_INTERNAL")));
 		auth.setDetails(adminId);
