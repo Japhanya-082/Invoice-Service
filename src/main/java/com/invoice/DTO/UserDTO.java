@@ -12,4 +12,6 @@ public class UserDTO {
 	private String companyName;
 	private String organizationName;
 	private String roleName;
+	private String companyAddress;
+	
 }

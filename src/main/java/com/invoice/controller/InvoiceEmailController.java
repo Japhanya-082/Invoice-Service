@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.invoice.scheduler.InvoiceAlertScheduler;
 import com.invoice.serviceImpl.InvoiceEmailServiceImpl;
 
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,8 @@ import lombok.extern.slf4j.Slf4j;
 public class InvoiceEmailController {
 
 	private final InvoiceEmailServiceImpl invoiceEmailService;
+	
+	private final InvoiceAlertScheduler invoiceAlertScheduler;
 
 	@PostMapping("/send-overdue-email/{invoiceNumber}")
 	public ResponseEntity<Map<String, Object>> sendOverdueEmail(@PathVariable String invoiceNumber,
@@ -28,6 +31,20 @@ public class InvoiceEmailController {
 			log.error("Error sending overdue email", e);
 			return ResponseEntity.status(500)
 					.body(Map.of("status", "error", "message", "Error sending overdue email: " + e.getMessage()));
+		}
+	}
+
+	
+	/** Manual trigger for testing — runs the full daily scheduler immediately. */
+	@PostMapping("/run-daily-alerts")
+	public ResponseEntity<Map<String, Object>> runDailyAlerts() {
+		try {
+			invoiceAlertScheduler.runDailyAlerts();
+			return ResponseEntity.ok(Map.of("status", "success", "message", "Daily alerts ran successfully"));
+		} catch (Exception e) {
+			log.error("Error running daily alerts", e);
+			return ResponseEntity.status(500)
+					.body(Map.of("status", "error", "message", e.getMessage()));
 		}
 	}
 }

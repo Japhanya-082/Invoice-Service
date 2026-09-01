@@ -21,6 +21,7 @@ public class ManualInvoiceLegacy {
 	@Column(name = "invoice_number", unique = true)
 	private String invoiceNumber;
 
+	
 	private String customer;
 	private String customerEmail;
 	private String customerPhone;
@@ -75,3 +76,4 @@ public class ManualInvoiceLegacy {
 		this.updatedAt = LocalDateTime.now();
 	}
 }
+

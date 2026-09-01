@@ -158,6 +158,9 @@ public class ManualInvoice {
 	@Column(name = "deleted_at")
 	private LocalDateTime deletedAt;
 
+	@Column(name = "reminder_snoozed_until")
+	private LocalDate reminderSnoozedUntil;
+
 	// Billing Address
 	@Embedded
 	@AttributeOverrides({ @AttributeOverride(name = "street", column = @Column(name = "billing_street")),
@@ -189,6 +192,7 @@ public class ManualInvoice {
 		items.clear();
 	}
 
+	
 //	/** Statuses permitted by the DB check constraint ck_manual_invoices_status. */
 //	private static final java.util.Set<String> ALLOWED_STATUSES = java.util.Set.of(
 //			"DRAFT", "PENDING", "RECEIVED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED");
@@ -228,6 +232,7 @@ public class ManualInvoice {
 //		}
 //		status = s;
 //	}
+	
 	
 	/** Statuses permitted by the DB check constraint. */
 	private static final Set<String> ALLOWED_STATUSES = Set.of(
@@ -284,6 +289,5 @@ public class ManualInvoice {
 
 	    status = s;
 	}
-	
 	
 }

@@ -5,9 +5,10 @@ public final class EmailSignatureConstants {
 	public static final String ADDRESS = "17440 Dallas Pkwy, Suite#122,\nDallas, Texas, 75287";
 
 	public static final String WEBSITE = "www.narveetech.com";
+	
+//	public static final String TAGLINE = "an E Verify Company\nUS - INDIA";
 
-	public static final String TAGLINE = "an E Verify Company\nUSA - INDIA";
-
+	
 	public static final String DISCLAIMER = "\n\nDisclaimer\n"
 			+ "This email may contain proprietary, confidential or privileged information and is intended "
 			+ "for the exclusive use of the named recipient. If you are not the intended recipient, "
@@ -18,4 +19,3 @@ public final class EmailSignatureConstants {
 			+ "caused by any virus transmitted by this email.";
 
 }
-

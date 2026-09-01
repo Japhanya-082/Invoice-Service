@@ -45,3 +45,4 @@ public class ManualInvoiceUpload {
 		this.uploadedAt = LocalDateTime.now();
 	}
 }
+

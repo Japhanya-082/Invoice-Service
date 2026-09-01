@@ -16,8 +16,10 @@ public class FeignClientInterceptor implements RequestInterceptor {
 
 		ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
 
+		
 		if (attributes != null) {
 
+			
 			HttpServletRequest request = attributes.getRequest();
 
 			String authorizationHeader = request.getHeader("Authorization");
@@ -27,4 +29,5 @@ public class FeignClientInterceptor implements RequestInterceptor {
 			}
 		}
 	}
+	
 }

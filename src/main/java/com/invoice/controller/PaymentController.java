@@ -54,12 +54,14 @@ public class PaymentController {
         return ResponseEntity.ok(new RestAPIResponse("success", "Payments retrieved", payments));
     }
 
+    
     @GetMapping("/invoice/{invoiceId}/balance")
     public ResponseEntity<RestAPIResponse> getBalance(@PathVariable Long invoiceId) {
         BigDecimal balance = paymentService.getInvoiceBalance(invoiceId);
         return ResponseEntity.ok(new RestAPIResponse("success", "Balance retrieved", balance));
     }
 
+    
     @GetMapping
     public ResponseEntity<RestAPIResponse> listPayments(
             @RequestParam(defaultValue = "0") int page,
@@ -79,3 +81,4 @@ public class PaymentController {
         return ResponseEntity.ok(new RestAPIResponse("success", "Payments page", result));
     }
 }
+

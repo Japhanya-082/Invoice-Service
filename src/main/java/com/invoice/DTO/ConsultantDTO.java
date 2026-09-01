@@ -15,7 +15,6 @@ public class ConsultantDTO {
 	private String lastName;
 	private String email;
 	private String invoiceMail;
-
 	private Long adminId;
 
 	public String getFullName() {

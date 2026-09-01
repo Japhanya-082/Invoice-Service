@@ -19,5 +19,4 @@ public class VendorClientServiceImpl implements VendorClientService {
 	public List<VendorDTO> fetchVendorByName(String name) {
 		return vendorFeignClient.searchVendors(name);
 	}
-
 }

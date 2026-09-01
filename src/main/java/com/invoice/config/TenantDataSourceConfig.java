@@ -24,6 +24,7 @@ public class TenantDataSourceConfig {
 	@Value("${spring.datasource.password}")
 	private String password;
 
+	
 	/**
 	 * Raw (non-routing) DataSource. Annotated with @FlywayDataSource so Spring
 	 * Boot's Flyway auto-configuration continues to use the fixed "invoice" schema
@@ -42,6 +43,7 @@ public class TenantDataSourceConfig {
 		return new HikariDataSource(config);
 	}
 
+	
 	/**
 	 * Primary routing DataSource used by JPA/Hibernate for all entity operations.
 	 */
@@ -57,3 +59,4 @@ public class TenantDataSourceConfig {
 		return router;
 	}
 }
+

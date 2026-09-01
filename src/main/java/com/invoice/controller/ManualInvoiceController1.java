@@ -1,5 +1,6 @@
 package com.invoice.controller;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,13 +19,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,6 +58,7 @@ import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
+@CrossOrigin(origins = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.OPTIONS})
 @RestController
 @RequestMapping("/manual-invoice")
 public class ManualInvoiceController1 {
@@ -141,12 +146,14 @@ public class ManualInvoiceController1 {
 					.body(new RestAPIResponse("Error", e.getMessage(), null));
 		}
 	}
+	
 
 //	@GetMapping("/consultant/{consultantId}/exists")
 //	public boolean consultantHasInvoice(@PathVariable Long consultantId) {
 //		return manualInvoiceRepository.existsByConsultantId(consultantId);
 //	}
 
+	
 	@GetMapping("/exists/{poNumber}")
 	public ResponseEntity<Map<String, Object>> checkPoNumberDuplicate(@PathVariable String poNumber,
 			@RequestParam(required = false) Long invoiceId, @RequestParam(required = false) Long adminId) {
@@ -163,6 +170,7 @@ public class ManualInvoiceController1 {
 		return ResponseEntity.ok(response);
 	}
 
+	
 	@GetMapping("/invoices/count-by-vendor/{vendorId}")
 	public ResponseEntity<Long> countInvoicesByVendor(@PathVariable Long vendorId) {
 		Long authAdminId = SecurityUtils.getCurrentAdminId();
@@ -170,6 +178,7 @@ public class ManualInvoiceController1 {
 		return ResponseEntity.ok(count);
 	}
 
+	
 	// Upload files and attach to invoice
 	@PostMapping(value = "/upload/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	@Transactional
@@ -213,6 +222,7 @@ public class ManualInvoiceController1 {
 		}
 	}
 
+	
 	// View single file
 	@GetMapping("/view/{filename}")
 	public ResponseEntity<Resource> viewFile(@PathVariable String filename) {
@@ -237,6 +247,7 @@ public class ManualInvoiceController1 {
 		}
 	}
 
+	
 	// Get invoice by ID + uploaded file URLs
 	@GetMapping("/{id}")
 	public ResponseEntity<RestAPIResponse> getInvoiceById(@PathVariable Long id, HttpServletRequest request) {
@@ -251,6 +262,7 @@ public class ManualInvoiceController1 {
 			List<String> fileUrls = invoice.getUploadedFileNames().stream()
 					.map(fileName -> baseUrl + "/manual-invoice/view/" + fileName).collect(Collectors.toList());
 
+			
 			Map<String, Object> responseData = new HashMap<>();
 			responseData.put("invoice", invoice);
 			responseData.put("fileDownloadUrls", fileUrls);
@@ -261,6 +273,7 @@ public class ManualInvoiceController1 {
 					.body(new RestAPIResponse("Error", "Failed to retrieve invoice: " + e.getMessage(), null));
 		}
 	}
+	
 
 	// Get all invoices
 	@GetMapping("/getall")
@@ -275,6 +288,7 @@ public class ManualInvoiceController1 {
 		}
 	}
 
+	
 	@GetMapping("/searchAndSort")
 	public ResponseEntity<RestAPIResponse> getManualInvoices(@RequestParam(required = false) String keyword,
 			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
@@ -307,6 +321,7 @@ public class ManualInvoiceController1 {
 					.body(new RestAPIResponse("Error", "Failed to fetch Invoices: " + e.getMessage(), null));
 		}
 	}
+	
 
 	@GetMapping("/count")
 	public ResponseEntity<RestAPIResponse> getInvoiceCounts() {
@@ -335,6 +350,7 @@ public class ManualInvoiceController1 {
 		return ResponseEntity.ok(new RestAPIResponse("Success", "Today's overdue count fetched", count));
 	}
 
+	
 	// ---------------- Today's overdue invoices for popup ----------------
 	@GetMapping("/today-overdue-invoices")
 	public ResponseEntity<RestAPIResponse> getTodayOverdueInvoices() {
@@ -347,6 +363,7 @@ public class ManualInvoiceController1 {
 		return ResponseEntity.ok(new RestAPIResponse("Success", "Today's overdue invoices fetched", invoices));
 	}
 
+	
 	@PutMapping("/update-status/{invoiceNumber}")
 	public ResponseEntity<String> updateInvoiceStatus(@PathVariable String invoiceNumber,
 			@RequestBody Map<String, String> payload) {
@@ -362,6 +379,20 @@ public class ManualInvoiceController1 {
 		return ResponseEntity.ok("Invoice " + invoiceNumber + " status updated to " + status);
 	}
 
+	
+	@PutMapping("/{id}/snooze")
+	public ResponseEntity<RestAPIResponse> snoozeInvoice(@PathVariable Long id,
+			@RequestBody Map<String, String> payload) {
+		ManualInvoice invoice = manualInvoiceRepository.findById(id)
+				.orElseThrow(() -> new RuntimeException("Invoice not found: " + id));
+		String dateStr = payload.get("reminderSnoozedUntil");
+		invoice.setReminderSnoozedUntil(dateStr != null ? LocalDate.parse(dateStr) : null);
+		invoice.setUpdatedAt(LocalDateTime.now());
+		manualInvoiceRepository.save(invoice);
+		return ResponseEntity.ok(new RestAPIResponse("success", "Snooze updated", null));
+	}
+
+	
 	// Update invoice
 	@PutMapping("/{id}")
 	public ResponseEntity<RestAPIResponse> updateInvoice(@PathVariable Long id, @RequestBody ManualInvoice invoice) {
@@ -379,6 +410,7 @@ public class ManualInvoiceController1 {
 		}
 	}
 
+	
 	@PutMapping("/update/{id}")
 	public ResponseEntity<RestAPIResponse> updateManualInvoice(@PathVariable Long id,
 			@RequestBody ManualInvoice invoice) {
@@ -394,6 +426,7 @@ public class ManualInvoiceController1 {
 		}
 	}
 
+	
 	@PutMapping("/invoices/update-vendor")
 	public ResponseEntity<Void> updateInvoicesByVendor(@RequestBody VendorDTO vendorDTO) {
 
@@ -416,6 +449,7 @@ public class ManualInvoiceController1 {
 
 		return ResponseEntity.ok().build();
 	}
+	
 
 	// Delete invoice
 	@DeleteMapping("/{id}")
@@ -435,12 +469,14 @@ public class ManualInvoiceController1 {
 		}
 	}
 
+	
 	@GetMapping("/consultant/{consultantId}/exists")
 	public boolean hasInvoices(@PathVariable("consultantId") Long consultantId) {
 		Long authAdminId = SecurityUtils.getCurrentAdminId();
 		return manualInvoiceRepository.existsByConsultantIdAndAdminId(consultantId, authAdminId);
 	}
 
+	
 //	@GetMapping("/consultant/{consultantId}/exists")
 //	public boolean hasInvoices(@PathVariable("consultantId") Long consultantId, @RequestParam Long adminId) {
 //
@@ -477,6 +513,7 @@ public class ManualInvoiceController1 {
 				.ok(new RestAPIResponse("Success", "Pending & Partially Paid invoices fetched successfully", invoices));
 	}
 
+	
 	@PostMapping("/pending-invoices/searchAndsorting")
 	public ResponseEntity<RestAPIResponse> getPendingInvoices(@RequestBody InvoiceSortingRequestDTO requestDTO) {
 
@@ -487,6 +524,7 @@ public class ManualInvoiceController1 {
 				"Pending & Partially received invoices fetched successfully", invoices.getContent()));
 	}
 
+	
 	@PostMapping("/invoices/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoicesByAdminAndVendorType(
 			@RequestBody InvoiceSortingRequestDTO requestDTO) {
@@ -498,6 +536,7 @@ public class ManualInvoiceController1 {
 				.ok(new RestAPIResponse("Success", "Invoices fetched successfully", invoices.getContent()));
 	}
 
+	
 	@PostMapping("/send-mails/{invoiceNumber}")
 	public ResponseEntity<RestAPIResponse> sendInvoiceMails(@PathVariable String invoiceNumber,
 			@RequestParam Long adminId) {
@@ -511,6 +550,7 @@ public class ManualInvoiceController1 {
 		}
 	}
 
+	
 	@PostMapping("/vendortype-receivable/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoiceByAdminAndVendorType(
 			@RequestBody InvoiceSortingRequestDTO requestDTO) {
@@ -519,6 +559,7 @@ public class ManualInvoiceController1 {
 		return ResponseEntity
 				.ok(new RestAPIResponse("Success", "Invoices fetched successfully", invoices.getContent()));
 	}
+	
 
 	@PostMapping("/vendortype-receivablestatus/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoiceByAdminAndVendorTypestatus(
@@ -552,6 +593,7 @@ public class ManualInvoiceController1 {
 		return ResponseEntity.ok(new RestAPIResponse("Success", "Invoices fetched successfully", responseData));
 	}
 
+	
 	@PostMapping("/invoicestatus/searchAndSorting")
 	public ResponseEntity<RestAPIResponse> getInvoicesByAdminAndVendorTypestatus(
 			@RequestBody InvoiceSortingRequestDTO requestDTO) {
@@ -583,6 +625,16 @@ public class ManualInvoiceController1 {
 		return ResponseEntity.ok(new RestAPIResponse("Success", "Invoices fetched successfully", responseData));
 	}
 
+	
+	@PostMapping("/find-invoice-page")
+	public ResponseEntity<RestAPIResponse> getInvoicePage(@RequestBody InvoiceSortingRequestDTO requestDTO) {
+		Long adminId = SecurityUtils.getCurrentAdminId();
+		int pageSize = (requestDTO.getPageSize() != null && requestDTO.getPageSize() > 0) ? requestDTO.getPageSize() : 20;
+		int pageNumber = serviceImpl1.getInvoicePage(
+				requestDTO.getInvoiceId(), requestDTO.getVendorType(), requestDTO.getStatus(), pageSize, adminId);
+		return ResponseEntity.ok(new RestAPIResponse("Success", "Invoice page found", Map.of("pageNumber", pageNumber)));
+	}
+
 	@GetMapping("/status-count/{adminId}")
 	public ResponseEntity<?> getInvoiceStatusCounts(@PathVariable Long adminId) {
 		Long authAdminId = SecurityUtils.getCurrentAdminId();
@@ -595,17 +647,22 @@ public class ManualInvoiceController1 {
 		return ResponseEntity.ok(response);
 	}
 
+	
 	@GetMapping("/check-employment/{employmentId}")
 	public ResponseEntity<Boolean> checkEmploymentInvoices(@PathVariable Long employmentId) {
 		return serviceImpl1.checkEmploymentInvoices(employmentId);
 	}
 
 	@GetMapping("/internal/dashboard-raw")
-	public ResponseEntity<RestAPIResponse> getInternalDashboardRaw() {
+	public ResponseEntity<RestAPIResponse> getInternalDashboardRaw(
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer daysRange,
+			@org.springframework.web.bind.annotation.RequestParam(required = false) Integer panelItems) {
 		Long adminId = SecurityUtils.getCurrentAdminId();
 		java.time.LocalDate today = java.time.LocalDate.now();
 		int year = today.getYear();
 		int month = today.getMonthValue();
+		int effectiveDays = (daysRange != null && daysRange > 0) ? daysRange : 14;
+		int effectiveItems = (panelItems != null && panelItems > 0) ? panelItems : 20;
 
 		KpiRawDTO kpi = KpiRawDTO.builder()
 				.arOutstanding(safe(manualInvoiceRepository.sumArOutstanding(adminId)))
@@ -623,7 +680,7 @@ public class ManualInvoiceController1 {
 				.build();
 
 		List<InvoiceSnapshotDTO> upcoming = manualInvoiceRepository
-				.findUpcomingAndOverdue(adminId, today.plusDays(14), PageRequest.of(0, 20))
+				.findUpcomingAndOverdue(adminId, today.plusDays(effectiveDays), PageRequest.of(0, effectiveItems))
 				.stream().map(this::toInvoiceSnapshot).collect(Collectors.toList());
 
 		List<InvoiceSnapshotDTO> recentInvoices = manualInvoiceRepository
@@ -645,6 +702,7 @@ public class ManualInvoiceController1 {
 		return ResponseEntity.ok(new RestAPIResponse("success", "Internal dashboard data", raw));
 	}
 
+	
 	private InvoiceSnapshotDTO toInvoiceSnapshot(ManualInvoice inv) {
 		return InvoiceSnapshotDTO.builder()
 				.id(inv.getId())
@@ -661,6 +719,7 @@ public class ManualInvoiceController1 {
 				.build();
 	}
 
+	
 	private PaymentSnapshotDTO toPaymentSnapshot(Payment pay, Long adminId) {
 		try {
 			ManualInvoice inv = manualInvoiceRepository.findById(pay.getInvoiceId()).orElse(null);
@@ -678,6 +737,7 @@ public class ManualInvoiceController1 {
 			return null;
 		}
 	}
+	
 
 	private java.math.BigDecimal safe(java.math.BigDecimal v) { return v != null ? v : java.math.BigDecimal.ZERO; }
 	private Long safe(Long v) { return v != null ? v : 0L; }

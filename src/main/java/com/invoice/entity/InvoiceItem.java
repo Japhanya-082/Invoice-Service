@@ -34,7 +34,6 @@ public class InvoiceItem {
 	@Column(precision = 19, scale = 4)
 	private BigDecimal rate = BigDecimal.ZERO;
 
-
 	// Calculated in service
 	@Column(precision = 19, scale = 4)
 	private BigDecimal amount = BigDecimal.ZERO;
@@ -43,5 +42,4 @@ public class InvoiceItem {
 	@JoinColumn(name = "invoice_id", nullable = false)
 	@JsonBackReference
 	private ManualInvoice manualInvoice;
-	
 }

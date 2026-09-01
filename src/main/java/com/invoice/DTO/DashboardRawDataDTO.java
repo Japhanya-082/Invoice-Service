@@ -1,4 +1,4 @@
-﻿package com.invoice.DTO;
+package com.invoice.DTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -16,4 +16,5 @@ public class DashboardRawDataDTO {
     private List<InvoiceSnapshotDTO> upcomingInvoices;
     private List<InvoiceSnapshotDTO> recentInvoices;
     private List<PaymentSnapshotDTO> recentPayments;
+    
 }

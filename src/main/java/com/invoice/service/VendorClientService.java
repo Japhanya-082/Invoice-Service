@@ -8,5 +8,4 @@ public interface VendorClientService {
 	
 	public List<VendorDTO> fetchVendorByName(String name);
 
-	
 }

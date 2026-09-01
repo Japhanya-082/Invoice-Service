@@ -24,7 +24,7 @@ public class InvoiceEmailService {
 	@Value("${spring.mail.username}")
 	private String fromMail;
 
-	public void sendInvoiceMail(List<String> toMail, ManualInvoice invoice) {
+	public void sendInvoiceMail(List<String> toMail, ManualInvoice invoice, List<String> ccEmails) {
 
 		try {
 
@@ -32,8 +32,13 @@ public class InvoiceEmailService {
 			MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
 			helper.setFrom(fromMail);
-			// ✅ List → String[]
 			helper.setTo(toMail.toArray(new String[0]));
+
+			if (ccEmails != null && !ccEmails.isEmpty()) {
+				String[] cc = ccEmails.stream().filter(e -> e != null && !e.isBlank()).toArray(String[]::new);
+				if (cc.length > 0)
+					helper.setCc(cc);
+			}
 			helper.setSubject("Invoice Generated - " + invoice.getInvoiceNumber());
 
 			String body = "<html>"

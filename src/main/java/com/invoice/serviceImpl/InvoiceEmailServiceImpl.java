@@ -1,5 +1,6 @@
 package com.invoice.serviceImpl;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -12,6 +13,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.invoice.DTO.UserDTO;
 import com.invoice.entity.ManualInvoice;
+import com.invoice.repository.ManageUserRepository;
 import com.invoice.service.EmailService;
 import com.invoice.service.InvoiceEmailService;
 
@@ -24,8 +26,9 @@ import lombok.extern.slf4j.Slf4j;
 public class InvoiceEmailServiceImpl implements InvoiceEmailService {
 
 	private final RestTemplate restTemplate;
-	private final ManualInvoiceServiceImpl1 invoiceService; // Your invoice fetch service
+	private final ManualInvoiceServiceImpl1 invoiceService;
 	private final EmailService emailService;
+	private final ManageUserRepository manageUserRepository;
 
 	@Value("${login.service.base-url}")
 	private String loginServiceBaseUrl;
@@ -63,7 +66,7 @@ public class InvoiceEmailServiceImpl implements InvoiceEmailService {
 		// 3️ Build UserDTO
 		UserDTO loggedInUser = new UserDTO((String) userData.get("email"), (String) userData.get("fullName"),
 				(String) userData.get("mobileNumber"), (String) userData.get("companyName"),
-				(String) userData.get("organizationName"), roleName);
+				(String) userData.get("organizationName"), roleName, null);
 
 		// 4️Fetch invoice
 		ManualInvoice invoice = invoiceService.getInvoiceByNumber(invoiceNumber);
@@ -71,11 +74,34 @@ public class InvoiceEmailServiceImpl implements InvoiceEmailService {
 			throw new RuntimeException("Invoice not found with number: " + invoiceNumber);
 		}
 
-		// 5️ Send email
-		emailService.sendOverdueInvoiceEmail(loggedInUser, invoice);
+		// 5️ Resolve sender (ACCOUNTANT) and CC (ADMIN + HR) from manage_users
+		Long authAdminId = invoice.getAdminId();
 
-		log.info("Overdue email sent. Invoice={}, From={}, Role={}", invoice.getInvoiceNumber(),
-				loggedInUser.getEmail(), roleName);
+		String companyAddress = manageUserRepository.findAdminAndHrByAdminId(authAdminId).stream()
+				.filter(u -> "ADMIN".equalsIgnoreCase(u.getRoleName())).findFirst().map(u -> u.getFormattedAddress())
+				.orElse("");
+
+		UserDTO sender = manageUserRepository.findAccountantsByAdminId(authAdminId).stream().findFirst()
+				.map(a -> new UserDTO(a.getPrimaryEmail(), loggedInUser.getFullName(), null,
+						loggedInUser.getCompanyName(), null, "Accountant", companyAddress))
+				.orElseGet(() -> new UserDTO(loggedInUser.getEmail(), loggedInUser.getFullName(), null,
+						loggedInUser.getCompanyName(), null, loggedInUser.getRoleName(), companyAddress)); // fall back
+																											// to
+																											// logged-in
+																											// user if
+																											// no
+																											// accountant
+																											// exists
+
+		List<String> cc = manageUserRepository.findAdminAndHrByAdminId(authAdminId).stream()
+				.map(u -> u.getPrimaryEmail()).filter(e -> e != null && !e.isBlank()).distinct()
+				.collect(java.util.stream.Collectors.toList());
+
+		// 6️ Send email
+		emailService.sendOverdueInvoiceEmail(sender, invoice, cc);
+
+		log.info("Overdue email sent. Invoice={}, From={}, Role={}, CC={}", invoice.getInvoiceNumber(),
+				sender.getEmail(), roleName, cc);
 	}
 
 }

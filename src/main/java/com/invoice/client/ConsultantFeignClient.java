@@ -11,5 +11,4 @@ public interface ConsultantFeignClient {
 
 	@GetMapping("/con/{id}")
 	ConsultantDTO getConsultant(@PathVariable("id") Long id);
-
 }

@@ -38,7 +38,10 @@ import com.invoice.DTO.VendorDTO;
 import com.invoice.client.ConsultantFeignClient;
 import com.invoice.client.VendorFeignClient;
 import com.invoice.entity.InvoiceItem;
+import com.invoice.entity.AdminSettings;
 import com.invoice.entity.ManualInvoice;
+import com.invoice.tenant.SecurityUtils;
+import com.invoice.repository.AdminSettingsRepository;
 import com.invoice.repository.ManualInvoiceRepository;
 import com.invoice.service.ManualInvoiceService1;
 
@@ -54,6 +57,12 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	@Autowired
 	private ManualInvoiceRepository invoiceRepository;
+
+	@Autowired
+	private AdminSettingsRepository adminSettingsRepository;
+
+	@Autowired
+	private com.invoice.repository.ManageUserRepository manageUserRepository;
 
 	@Autowired
 	private VendorFeignClient vendorFeignClient;
@@ -92,10 +101,11 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 			invoice.clearItems();
 
 			if (request.getItems() != null) {
-			    for (InvoiceItem item : request.getItems()) {
-			        item.setManualInvoice(invoice); // parent mapping
-			        invoice.getItems().add(item);
-			    }}
+				for (InvoiceItem item : request.getItems()) {
+					item.setManualInvoice(invoice); // parent mapping
+					invoice.getItems().add(item);
+				}
+			}
 		} else {
 
 			// CREATE validation
@@ -177,7 +187,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		invoice.setPaidDate(request.getPaidDate());
 		invoice.setPaidAmount(request.getPaidAmount());
 		invoice.setPeriod(request.getPeriod());
-        invoice.setEmploymentId(request.getEmploymentId());
+		invoice.setEmploymentId(request.getEmploymentId());
 		// Financial totals are computed by the frontend and sent in the payload
 		invoice.setSubtotal(request.getSubtotal());
 		invoice.setTotal(request.getTotal());
@@ -241,9 +251,10 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 				String invoiceId = String.format("%03d", invoice.getId());
 
-				invoice.setInvoiceNumber("INV-" + year + consultant + invoiceId);
+				String prefix = resolveInvoicePrefix(invoice.getAdminId());
+				invoice.setInvoiceNumber(prefix + year + consultant + invoiceId);
 			}
-			
+
 			return invoiceRepository.save(invoice);
 
 		} catch (org.springframework.dao.DataIntegrityViolationException e) {
@@ -535,23 +546,15 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	/** Statuses permitted by the DB check constraint ck_manual_invoices_status. */
 	private static final java.util.Set<String> ALLOWED_DB_STATUSES = java.util.Set.of(
-			
-			        "DRAFT",
-			        "PENDING",
-			        "RECEIVED",
-			        "PARTIALLY_RECEIVED",
-			        "PARTIALLY_PAID",
-			        "PAID",
-			        "OVERDUE",
-			        "CANCELLED",
-			        "EXCESS_RECEIVED",
-			        "EXCESS_PAID"
-			);
+
+			"DRAFT", "PENDING", "RECEIVED", "PARTIALLY_RECEIVED", "PARTIALLY_PAID", "PAID", "OVERDUE", "CANCELLED",
+			"EXCESS_RECEIVED", "EXCESS_PAID");
+
 	/**
 	 * Converts a UI status (e.g. "Pending", "Partially Paid") to the DB enum form
-	 * (UPPERCASE_UNDERSCORE) required by ck_manual_invoices_status. If the requested
-	 * value is blank or not a recognized DB status, the existing value is kept so the
-	 * update can't violate the constraint.
+	 * (UPPERCASE_UNDERSCORE) required by ck_manual_invoices_status. If the
+	 * requested value is blank or not a recognized DB status, the existing value is
+	 * kept so the update can't violate the constraint.
 	 */
 //	private String normalizeStatusForDb(String requested, String fallback) {
 //		if (requested == null || requested.isBlank()) {
@@ -563,23 +566,19 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 //		}
 //		return fallback != null ? fallback : "PENDING";
 //	}
-	
+
 	private String normalizeStatusForDb(String requested, String fallback) {
-	    if (requested == null || requested.isBlank()) {
-	        return fallback;
-	    }
+		if (requested == null || requested.isBlank()) {
+			return fallback;
+		}
 
-	    String normalized = requested.trim()
-	                                 .toUpperCase()
-	                                 .replaceAll("\\s+", "_");
+		String normalized = requested.trim().toUpperCase().replaceAll("\\s+", "_");
 
-	    if ("SENT".equals(normalized)) {
-	        normalized = "PENDING";
-	    }
+		if ("SENT".equals(normalized)) {
+			normalized = "PENDING";
+		}
 
-	    return ALLOWED_DB_STATUSES.contains(normalized)
-	            ? normalized
-	            : (fallback != null ? fallback : "PENDING");
+		return ALLOWED_DB_STATUSES.contains(normalized) ? normalized : (fallback != null ? fallback : "PENDING");
 	}
 
 	@Override
@@ -752,7 +751,10 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		String email = consultant.getInvoiceMail();
 
 		List<String> emails = Arrays.stream(email.split(",")).map(String::trim).filter(e -> !e.isEmpty()).toList();
-		invoiceEmailService.sendInvoiceMail(emails, invoice);
+		invoiceEmailService.sendInvoiceMail(emails, invoice, buildCcList(adminId));
+		invoice.setStatus("PENDING");
+		invoice.setUpdatedAt(java.time.LocalDateTime.now());
+		invoiceRepository.save(invoice);
 	}
 
 	@Override
@@ -860,7 +862,7 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 			if (emails.isEmpty()) {
 				throw new RuntimeException("No valid email addresses found");
 			}
-			invoiceEmailService.sendInvoiceMail(emails, invoice);
+			invoiceEmailService.sendInvoiceMail(emails, invoice, buildCcList(adminId));
 			// Must match ck_manual_invoices_status (uppercase enum), not title case.
 			invoice.setStatus("PENDING");
 			invoiceRepository.save(invoice);
@@ -973,14 +975,16 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 	}
 
 	/**
-	 * Maps AR receivable status labels to the status actually stored on the invoice.
-	 * "Received" → "Paid", "Partially Received" → "Partially Paid",
+	 * Maps AR receivable status labels to the status actually stored on the
+	 * invoice. "Received" → "Paid", "Partially Received" → "Partially Paid",
 	 * "Excess Received" → "Excess Paid". Other values pass through unchanged. The
-	 * downstream queries compare with LOWER(...), so the returned casing doesn't matter.
+	 * downstream queries compare with LOWER(...), so the returned casing doesn't
+	 * matter.
 	 */
 	private String mapReceivableStatusToStored(String status) {
 		// Statuses are stored exactly as the frontend sends them (title case, e.g.
-		// "Partially Received"), and AR uses received-side labels while AP uses paid-side.
+		// "Partially Received"), and AR uses received-side labels while AP uses
+		// paid-side.
 		// No folding/format change — the query compares case-insensitively.
 		if (status == null || status.isBlank()) {
 			return null;
@@ -1005,11 +1009,12 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 				? requestDTO.getStatus().trim()
 				: null;
 
-		// Receivable invoices are stored with the payment statuses (PAID / PARTIALLY_PAID),
-		// while the AR UI labels them "Received" / "Partially Received". Translate the UI
+		// Receivable invoices are stored with the payment statuses (PAID /
+		// PARTIALLY_PAID),
+		// while the AR UI labels them "Received" / "Partially Received". Translate the
+		// UI
 		// label to the stored status (and DB enum format) so the tab matches rows.
 		status = mapReceivableStatusToStored(status);
-
 
 		// ✅ Pagination
 		if (pageNo == null || pageNo < 0)
@@ -1094,6 +1099,30 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		}
 
 		return invoiceRepository.findByAdminIdAndVendorTypeIgnoreCase(adminId, vendorType, pageable);
+	}
+
+	@Override
+	public int getInvoicePage(Long invoiceId, String vendorType, String status, int pageSize, Long adminId) {
+		long countBefore = invoiceRepository.countBeforeIdWithFilters(adminId, vendorType, status, invoiceId);
+		return (int) (countBefore / pageSize) + 1;
+	}
+
+	private String resolveInvoicePrefix(Long adminId) {
+		try {
+			String email = SecurityUtils.getCurrentUserEmail();
+			if (email != null) {
+				return adminSettingsRepository.findByEmailIgnoreCase(email).map(AdminSettings::getInvoicePrefix)
+						.filter(p -> p != null && !p.trim().isEmpty())
+						.map(p -> p.trim().endsWith("-") ? p.trim() : p.trim() + "-").orElse("INV-");
+			}
+		} catch (Exception ignored) {
+		}
+		return "INV-";
+	}
+
+	private List<String> buildCcList(Long adminId) {
+		return manageUserRepository.findAdminAndHrByAdminId(adminId).stream().map(u -> u.getPrimaryEmail())
+				.filter(e -> e != null && !e.isBlank()).distinct().collect(java.util.stream.Collectors.toList());
 	}
 
 	private String resolveSortField(String sortBy) {

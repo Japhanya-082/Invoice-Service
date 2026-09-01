@@ -69,6 +69,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 		log.info("Tesseract OCR engine initialised from: {}", tessdataPath);
 	}
 
+	
 	@Override
 	public List<Invoice> uploadAndSaveInvoices(MultipartFile file) throws FileStorageException {
 		try {
@@ -119,6 +120,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 		}
 	}
 
+	
 	/** Extract Client Name from text (used internally by core parser) */
 	private String extractClientName(String text) {
 		String clientName = "Unknown";
@@ -145,6 +147,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 		return clientName;
 	}
 
+	
 	/**
 	 * Core parser for text-based extraction (works for CSV, Excel, DOCX, PDF,
 	 * Image)
@@ -228,6 +231,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 		}
 	}
 
+	
 	/** CSV Parsing — reads header + ALL data rows */
 	private List<Invoice> parseCsvFile(Path path, String fileName) throws IOException {
 		List<Invoice> invoices = new ArrayList<>();
@@ -248,6 +252,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 		return invoices;
 	}
 
+	
 	/** Excel Parsing */
 	private List<Invoice> parseExcelFile(Path path, String fileName) throws IOException {
 		List<Invoice> invoices = new ArrayList<>();
@@ -269,6 +274,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 		return invoices;
 	}
 
+	
 	/** DOCX Parsing */
 	private List<Invoice> parseDocxFile(Path path, String fileName) throws IOException {
 		List<Invoice> invoices = new ArrayList<>();
@@ -282,6 +288,7 @@ public class InvoiceServiceImpl implements InvoiceService {
 		return invoices;
 	}
 
+	
 	/** PDF Parsing */
 	private List<Invoice> parsePdfFile(Path path, String fileName) throws IOException {
 		List<Invoice> invoices = new ArrayList<>();
