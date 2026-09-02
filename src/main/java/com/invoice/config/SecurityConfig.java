@@ -63,11 +63,14 @@ public class SecurityConfig {
 			.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+				// Neither /internal/provision-schema/** (executes DDL) nor
+				// /manual-invoice/run-daily-alerts (fans out email to every matching
+				// customer and vendor) may be public. Both authenticate via the
+				// X-Internal-Api-Key header checked in TenantFilter and are gated by
+				// @PreAuthorize on their handlers.
 				.requestMatchers(
 						"/actuator/health",
-						"/actuator/info",
-						"/internal/provision-schema/**",
-						"/manual-invoice/run-daily-alerts"
+						"/actuator/info"
 				).permitAll()
 				.anyRequest().authenticated())
 			.addFilterBefore(tenantFilter, UsernamePasswordAuthenticationFilter.class)

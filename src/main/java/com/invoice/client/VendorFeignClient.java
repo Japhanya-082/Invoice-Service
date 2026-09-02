@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.invoice.DTO.VendorDTO;
 
-@FeignClient(name = "CUSTOMER-SERVICE")
+@FeignClient(name = "customer-service", url = "${CUSTOMER_SERVICE_URL:http://customer:5679}")
 public interface VendorFeignClient {
 
 	

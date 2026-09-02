@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class JwtAuthenticationFilterTest {
 
 	/** Must be at least 256 bits (32 bytes) for HS256. */
-	private static final String TEST_SECRET = "8f2c9a6d1e4b7c3f5a0d9e2b6c8f1a4e7d0c3b5a9f2e6d1c4b7a8e0f3d5c2b1";
+	private static final String TEST_SECRET = "test-only-do-not-use-in-prod-signing-key-0000000000000000000000";
 
 	private TenantFilter filter;
 

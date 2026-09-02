@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import com.invoice.DTO.ConsultantDTO;
 
-@FeignClient(name = "consultant-service", url = "http://localhost:5679")
+@FeignClient(name = "consultant-service", url = "${CUSTOMER_SERVICE_URL:http://customer:5679}")
 public interface ConsultantFeignClient {
 
 	@GetMapping("/con/{id}")

@@ -30,9 +30,34 @@ import java.util.List;
 @Order(1)
 @Slf4j
 public class TenantFilter extends OncePerRequestFilter {
+	/**
+	 * Authorities that may NEVER originate from a token claim.
+	 *
+	 * ROLE_INTERNAL denotes "this call came from another service inside the
+	 * platform" and is granted only after the shared X-Internal-Api-Key has been
+	 * verified. Mapping it from the roles claim let any bearer of a tenant token
+	 * containing roles:["INTERNAL"] invoke internal-only endpoints — verified
+	 * against the live security chain, which returned 200 for exactly that token.
+	 */
+	private static final java.util.Set<String> RESERVED_AUTHORITIES =
+			java.util.Set.of("ROLE_INTERNAL");
+
 
 	@Value("${jwt.secret}")
 	private String jwtSecret;
+
+    /** Expected token issuer. Not a secret; verified on every request. */
+    @Value("${jwt.issuer}")
+    private String jwtIssuer;
+
+    /** Expected token audience. Not a secret; verified on every request. */
+    @Value("${jwt.audience}")
+    private String jwtAudience;
+
+    /** Bounded tolerance for clock drift between issuer and verifier. */
+    @Value("${jwt.clock-skew-seconds:30}")
+    private long jwtClockSkewSeconds;
+
 
 	@Value("${internal.api-key:}")
 	private String internalApiKey;
@@ -81,14 +106,16 @@ public class TenantFilter extends OncePerRequestFilter {
 	}
 
 	private boolean isExempt(String path) {
-		return path.startsWith("/actuator/health") || path.startsWith("/actuator/info")
-				|| path.startsWith("/internal/provision-schema/");
+		// /internal/provision-schema/ is deliberately NOT exempt: exempting it returned
+		// before isTrustedInternalCall() could run, so the internal-API-key check never
+		// executed and the DDL endpoint was reachable anonymously.
+		return path.startsWith("/actuator/health") || path.startsWith("/actuator/info");
 	}
 
 	private boolean isTrustedInternalCall(HttpServletRequest request) {
 		if (!StringUtils.hasText(internalApiKey))
 			return false;
-		return internalApiKey.equals(request.getHeader("X-Internal-Api-Key"));
+		return constantTimeEquals(internalApiKey, request.getHeader("X-Internal-Api-Key"));
 	}
 
 	private void applyClaims(Claims claims) {
@@ -110,8 +137,15 @@ public class TenantFilter extends OncePerRequestFilter {
 		Object roles = claims.get("roles");
 		if (roles instanceof List<?> roleList) {
 			for (Object r : roleList)
-				if (r != null)
-					authorities.add(new SimpleGrantedAuthority("ROLE_" + r.toString().toUpperCase()));
+				if (r != null) {
+					String authority = "ROLE_" + r.toString().toUpperCase();
+					if (RESERVED_AUTHORITIES.contains(authority)) {
+						log.warn("Ignoring reserved authority {} claimed by token subject — "
+								+ "internal authority is granted only via the internal API key", authority);
+						continue;
+					}
+					authorities.add(new SimpleGrantedAuthority(authority));
+				}
 		}
 		Object privileges = claims.get("privileges");
 		if (privileges instanceof Collection<?> privCol) {
@@ -127,9 +161,12 @@ public class TenantFilter extends OncePerRequestFilter {
 
 	private void applyInternalHeaders(HttpServletRequest request) {
 		Long adminId = coerceLong(request.getHeader("X-Admin-Id"));
-		if (adminId == null)
-			return;
-		TenantContext.setCurrentAdminId(adminId);
+		// Do NOT require X-Admin-Id: provisioning runs before the tenant exists, so
+		// demanding an adminId would reject the very call that creates it. The shared
+		// internal key has already been verified.
+		if (adminId != null) {
+			TenantContext.setCurrentAdminId(adminId);
+		}
 		String tenantHeader = request.getHeader("X-Tenant-Id");
 		if (StringUtils.hasText(tenantHeader))
 			TenantContext.setCurrentTenant(tenantHeader.trim());
@@ -141,7 +178,11 @@ public class TenantFilter extends OncePerRequestFilter {
 
 	private Claims parseClaims(String token) {
 		Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-		return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+		return Jwts.parserBuilder().setSigningKey(key)
+				.requireIssuer(jwtIssuer)
+				.requireAudience(jwtAudience)
+				.setAllowedClockSkewSeconds(jwtClockSkewSeconds)
+				.build().parseClaimsJws(token).getBody();
 	}
 
 	private Long coerceLong(Object value) {
@@ -160,5 +201,43 @@ public class TenantFilter extends OncePerRequestFilter {
 		response.setStatus(HttpStatus.UNAUTHORIZED.value());
 		response.setContentType("application/json");
 		response.getWriter().write("{\"status\":\"failed\",\"message\":\"" + message + "\"}");
+	}
+
+	/**
+	 * Comparing a shared secret with String.equals short-circuits on the first
+	 * differing byte, which leaks its length and prefix to a timing observer.
+	 * MessageDigest.isEqual is constant-time for equal-length inputs.
+	 */
+	private static boolean constantTimeEquals(String expected, String supplied) {
+		if (expected == null || supplied == null) {
+			return false;
+		}
+		return java.security.MessageDigest.isEqual(
+				expected.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+				supplied.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+	}
+
+	/**
+	 * jjwt treats requireIssuer(null)/requireAudience(null) as "no requirement" and
+	 * silently accepts the token — verified empirically against jjwt 0.11.5. A blank
+	 * jwt.issuer or jwt.audience would therefore disable claim validation with no
+	 * error at all. Refuse to start instead: a service that cannot validate claims
+	 * must not serve traffic.
+	 */
+	@jakarta.annotation.PostConstruct
+	void assertClaimValidationIsConfigured() {
+		if (jwtIssuer == null || jwtIssuer.isBlank()) {
+			throw new IllegalStateException(
+					"jwt.issuer must be set — a blank value silently disables issuer validation.");
+		}
+		if (jwtAudience == null || jwtAudience.isBlank()) {
+			throw new IllegalStateException(
+					"jwt.audience must be set — a blank value silently disables audience validation.");
+		}
+		if (jwtSecret != null
+				&& jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8).length < 32) {
+			throw new IllegalStateException(
+					"jwt.secret must be at least 32 bytes (256 bits) for HS256.");
+		}
 	}
 }
