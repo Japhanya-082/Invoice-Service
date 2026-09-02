@@ -30,6 +30,18 @@ import java.util.List;
 @Order(1)
 @Slf4j
 public class TenantFilter extends OncePerRequestFilter {
+	/**
+	 * Authorities that may NEVER originate from a token claim.
+	 *
+	 * ROLE_INTERNAL denotes "this call came from another service inside the
+	 * platform" and is granted only after the shared X-Internal-Api-Key has been
+	 * verified. Mapping it from the roles claim let any bearer of a tenant token
+	 * containing roles:["INTERNAL"] invoke internal-only endpoints — verified
+	 * against the live security chain, which returned 200 for exactly that token.
+	 */
+	private static final java.util.Set<String> RESERVED_AUTHORITIES =
+			java.util.Set.of("ROLE_INTERNAL");
+
 
 	@Value("${jwt.secret}")
 	private String jwtSecret;
@@ -94,8 +106,10 @@ public class TenantFilter extends OncePerRequestFilter {
 	}
 
 	private boolean isExempt(String path) {
-		return path.startsWith("/actuator/health") || path.startsWith("/actuator/info")
-				|| path.startsWith("/internal/provision-schema/");
+		// /internal/provision-schema/ is deliberately NOT exempt: exempting it returned
+		// before isTrustedInternalCall() could run, so the internal-API-key check never
+		// executed and the DDL endpoint was reachable anonymously.
+		return path.startsWith("/actuator/health") || path.startsWith("/actuator/info");
 	}
 
 	private boolean isTrustedInternalCall(HttpServletRequest request) {
@@ -123,8 +137,15 @@ public class TenantFilter extends OncePerRequestFilter {
 		Object roles = claims.get("roles");
 		if (roles instanceof List<?> roleList) {
 			for (Object r : roleList)
-				if (r != null)
-					authorities.add(new SimpleGrantedAuthority("ROLE_" + r.toString().toUpperCase()));
+				if (r != null) {
+					String authority = "ROLE_" + r.toString().toUpperCase();
+					if (RESERVED_AUTHORITIES.contains(authority)) {
+						log.warn("Ignoring reserved authority {} claimed by token subject — "
+								+ "internal authority is granted only via the internal API key", authority);
+						continue;
+					}
+					authorities.add(new SimpleGrantedAuthority(authority));
+				}
 		}
 		Object privileges = claims.get("privileges");
 		if (privileges instanceof Collection<?> privCol) {
@@ -140,9 +161,12 @@ public class TenantFilter extends OncePerRequestFilter {
 
 	private void applyInternalHeaders(HttpServletRequest request) {
 		Long adminId = coerceLong(request.getHeader("X-Admin-Id"));
-		if (adminId == null)
-			return;
-		TenantContext.setCurrentAdminId(adminId);
+		// Do NOT require X-Admin-Id: provisioning runs before the tenant exists, so
+		// demanding an adminId would reject the very call that creates it. The shared
+		// internal key has already been verified.
+		if (adminId != null) {
+			TenantContext.setCurrentAdminId(adminId);
+		}
 		String tenantHeader = request.getHeader("X-Tenant-Id");
 		if (StringUtils.hasText(tenantHeader))
 			TenantContext.setCurrentTenant(tenantHeader.trim());
