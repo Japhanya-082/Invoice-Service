@@ -39,6 +39,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * required.
  */
 @WebMvcTest(ManualInvoiceController1.class)
+@org.springframework.test.context.ActiveProfiles("test")
 @AutoConfigureMockMvc(addFilters = false)
 class ManualInvoiceControllerTest {
 

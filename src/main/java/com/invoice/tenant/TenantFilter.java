@@ -34,6 +34,19 @@ public class TenantFilter extends OncePerRequestFilter {
 	@Value("${jwt.secret}")
 	private String jwtSecret;
 
+    /** Expected token issuer. Not a secret; verified on every request. */
+    @Value("${jwt.issuer}")
+    private String jwtIssuer;
+
+    /** Expected token audience. Not a secret; verified on every request. */
+    @Value("${jwt.audience}")
+    private String jwtAudience;
+
+    /** Bounded tolerance for clock drift between issuer and verifier. */
+    @Value("${jwt.clock-skew-seconds:30}")
+    private long jwtClockSkewSeconds;
+
+
 	@Value("${internal.api-key:}")
 	private String internalApiKey;
 
@@ -88,7 +101,7 @@ public class TenantFilter extends OncePerRequestFilter {
 	private boolean isTrustedInternalCall(HttpServletRequest request) {
 		if (!StringUtils.hasText(internalApiKey))
 			return false;
-		return internalApiKey.equals(request.getHeader("X-Internal-Api-Key"));
+		return constantTimeEquals(internalApiKey, request.getHeader("X-Internal-Api-Key"));
 	}
 
 	private void applyClaims(Claims claims) {
@@ -141,7 +154,11 @@ public class TenantFilter extends OncePerRequestFilter {
 
 	private Claims parseClaims(String token) {
 		Key key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
-		return Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+		return Jwts.parserBuilder().setSigningKey(key)
+				.requireIssuer(jwtIssuer)
+				.requireAudience(jwtAudience)
+				.setAllowedClockSkewSeconds(jwtClockSkewSeconds)
+				.build().parseClaimsJws(token).getBody();
 	}
 
 	private Long coerceLong(Object value) {
@@ -160,5 +177,43 @@ public class TenantFilter extends OncePerRequestFilter {
 		response.setStatus(HttpStatus.UNAUTHORIZED.value());
 		response.setContentType("application/json");
 		response.getWriter().write("{\"status\":\"failed\",\"message\":\"" + message + "\"}");
+	}
+
+	/**
+	 * Comparing a shared secret with String.equals short-circuits on the first
+	 * differing byte, which leaks its length and prefix to a timing observer.
+	 * MessageDigest.isEqual is constant-time for equal-length inputs.
+	 */
+	private static boolean constantTimeEquals(String expected, String supplied) {
+		if (expected == null || supplied == null) {
+			return false;
+		}
+		return java.security.MessageDigest.isEqual(
+				expected.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+				supplied.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+	}
+
+	/**
+	 * jjwt treats requireIssuer(null)/requireAudience(null) as "no requirement" and
+	 * silently accepts the token — verified empirically against jjwt 0.11.5. A blank
+	 * jwt.issuer or jwt.audience would therefore disable claim validation with no
+	 * error at all. Refuse to start instead: a service that cannot validate claims
+	 * must not serve traffic.
+	 */
+	@jakarta.annotation.PostConstruct
+	void assertClaimValidationIsConfigured() {
+		if (jwtIssuer == null || jwtIssuer.isBlank()) {
+			throw new IllegalStateException(
+					"jwt.issuer must be set — a blank value silently disables issuer validation.");
+		}
+		if (jwtAudience == null || jwtAudience.isBlank()) {
+			throw new IllegalStateException(
+					"jwt.audience must be set — a blank value silently disables audience validation.");
+		}
+		if (jwtSecret != null
+				&& jwtSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8).length < 32) {
+			throw new IllegalStateException(
+					"jwt.secret must be at least 32 bytes (256 bits) for HS256.");
+		}
 	}
 }
