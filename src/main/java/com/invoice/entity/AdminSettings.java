@@ -2,6 +2,8 @@ package com.invoice.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import org.hibernate.annotations.Immutable;
@@ -12,7 +14,14 @@ import org.hibernate.annotations.Immutable;
 public class AdminSettings {
 
 	
+    // Read-only projection - this entity never inserts. The strategy is here
+    // only so ddl-auto=update generates the same column as Invoice-Login's Admin,
+    // which owns writes to this table. Without it, whichever service starts
+    // first decides whether the id gets an identity, and when this one won the
+    // race every insert by the owner failed. Repaired in V014 for databases
+    // already built the wrong way.
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "primary_email")
