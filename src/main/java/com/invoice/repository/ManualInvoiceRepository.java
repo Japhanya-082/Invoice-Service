@@ -381,4 +381,23 @@ public interface ManualInvoiceRepository
 			+ "AND YEAR(i.invoiceDate) = :year AND MONTH(i.invoiceDate) = :month")
 	Long countPaidThisMonth(@Param("adminId") Long adminId, @Param("year") int year, @Param("month") int month);
 
+
+	// Tenant-scoped variants for the call sites that were still using the
+	// unscoped ones. The unscoped methods on this interface already carry
+	// "Unscoped; use ... instead" comments -- the derivations existed, three
+	// service methods just never moved over.
+	java.util.List<ManualInvoice> findByConsultantIdAndAdminId(Long consultantId, Long adminId);
+
+	/**
+	 * Whether the caller's own tenant has an invoice referencing this uploaded
+	 * file. uploadedFileNames is an @ElementCollection, so this needs an
+	 * explicit query rather than a derivation.
+	 */
+	@org.springframework.data.jpa.repository.Query("""
+			SELECT COUNT(i) > 0 FROM ManualInvoice i JOIN i.uploadedFileNames f
+			WHERE f = :fileName AND i.adminId = :adminId
+			""")
+	boolean existsUploadedFileForTenant(
+			@org.springframework.data.repository.query.Param("fileName") String fileName,
+			@org.springframework.data.repository.query.Param("adminId") Long adminId);
 }

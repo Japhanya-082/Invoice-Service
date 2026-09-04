@@ -55,6 +55,17 @@ class ManualInvoiceServiceImpl1Test {
 	void setUp() {
 		// Inject the uploadDir value since @Value won't be processed by Mockito
 		ReflectionTestUtils.setField(service, "uploadDir", "/tmp/test-uploads");
+
+		// The read paths are tenant-scoped now (they call
+		// SecurityUtils.getCurrentAdminId()), so the thread needs a tenant --
+		// otherwise every one of them fails with "no authenticated adminId"
+		// before reaching the behaviour under test.
+		com.invoice.tenant.TenantContext.setCurrentAdminId(ADMIN_ID);
+	}
+
+	@org.junit.jupiter.api.AfterEach
+	void clearTenant() {
+		com.invoice.tenant.TenantContext.clear();
 	}
 
 	// =========================================================
@@ -234,7 +245,9 @@ class ManualInvoiceServiceImpl1Test {
 
 	@Test
 	void getInvoiceById_notFound_throws() {
-		when(invoiceRepository.findById(404L)).thenReturn(Optional.empty());
+		// findByIdAndAdminId, not findById: the lookup is tenant-scoped, so a
+		// foreign invoice and a missing one are the same empty Optional.
+		when(invoiceRepository.findByIdAndAdminId(404L, ADMIN_ID)).thenReturn(Optional.empty());
 
 		RuntimeException ex = assertThrows(RuntimeException.class, () -> service.getInvoiceById(404L));
 		assertTrue(ex.getMessage().contains("not found") || ex.getMessage().contains("404"),

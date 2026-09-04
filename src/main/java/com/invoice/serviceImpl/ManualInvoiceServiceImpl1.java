@@ -327,7 +327,10 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	@Override
 	public ManualInvoice getInvoiceById(Long id) {
-		ManualInvoice invoice = invoiceRepository.findById(id)
+		// Scoped. findByIdAndAdminId already existed on the repository -- this
+		// call site simply never moved over, so any tenant's invoice was
+		// readable by id.
+		ManualInvoice invoice = invoiceRepository.findByIdAndAdminId(id, SecurityUtils.getCurrentAdminId())
 				.orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
 
 		if (invoice.getUploadedFileNames() == null) {
@@ -538,7 +541,26 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	@Override
 	public Resource loadFileAsResource(String filename) throws Exception {
-		File file = new File(uploadDir, filename);
+		// Ownership first: the caller's own tenant must have an invoice
+		// referencing this file. Nothing checked that, so any authenticated
+		// caller with a file name got any tenant's invoice attachment.
+		if (!invoiceRepository.existsUploadedFileForTenant(filename, SecurityUtils.getCurrentAdminId())) {
+			throw new FileNotFoundException("File not found: " + filename);
+		}
+
+		java.nio.file.Path base = java.nio.file.Paths.get(uploadDir).toAbsolutePath().normalize();
+		java.nio.file.Path filePath = base.resolve(filename).normalize();
+
+		// Containment: this was `new File(uploadDir, filename)` with no check at
+		// all, so "../.." escaped the upload directory entirely. The ownership
+		// check above happens to refuse a traversing name too, but a boundary
+		// that only holds because another check runs first is not a boundary --
+		// see the same ordering problem in Invoice-Login (G-45).
+		if (!filePath.startsWith(base)) {
+			throw new FileNotFoundException("File not found: " + filename);
+		}
+
+		File file = filePath.toFile();
 		if (!file.exists())
 			throw new FileNotFoundException("File not found: " + filename);
 		return new UrlResource(file.toURI());
@@ -585,7 +607,9 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 	@Transactional
 	public ManualInvoice updateManualInvoice(Long id, ManualInvoice request) {
 
-		ManualInvoice invoice = invoiceRepository.findById(id)
+		// Scoped, as above. Unscoped, this let one tenant rewrite another's
+		// invoice -- amounts, status, dates.
+		ManualInvoice invoice = invoiceRepository.findByIdAndAdminId(id, SecurityUtils.getCurrentAdminId())
 				.orElseThrow(() -> new RuntimeException("Invoice not found with id: " + id));
 		String poNumber = request.getPoNumber();
 
@@ -759,7 +783,8 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 	@Override
 	public List<ManualInvoice> getInvoicesByConsultantId(Long consultantId) {
-		return invoiceRepository.findByConsultantId(consultantId);
+		return invoiceRepository.findByConsultantIdAndAdminId(consultantId,
+				SecurityUtils.getCurrentAdminId());
 	}
 
 	@Override
