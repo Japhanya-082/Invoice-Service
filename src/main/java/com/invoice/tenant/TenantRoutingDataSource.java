@@ -95,7 +95,8 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
 	}
 
 	private String buildUrl(String schemaName) {
-		String url = baseJdbcUrl.replaceAll("[?&]currentSchema=[^&]*", "");
-		return url.contains("?") ? url + "&currentSchema=" + schemaName : url + "?currentSchema=" + schemaName;
+		// Same driver-awareness as TenantDataSourceConfig.withSchema -- appending
+		// a PostgreSQL parameter to a non-PostgreSQL URL corrupts it.
+		return com.invoice.config.TenantDataSourceConfig.withSchema(baseJdbcUrl, schemaName);
 	}
 }
