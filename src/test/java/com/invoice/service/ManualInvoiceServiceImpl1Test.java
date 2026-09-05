@@ -151,6 +151,38 @@ class ManualInvoiceServiceImpl1Test {
 	}
 
 	// =========================================================
+	// E-5: the sibling answers without the consultant's tenant.
+	// =========================================================
+	@Test
+	void saveInvoice_consultantWithoutTenant_isRefusedNotNpe() {
+		ManualInvoice request = buildCreateRequest();
+		ConsultantDTO consultant = buildConsultant();
+		consultant.setAdminId(null);
+		when(consultantFeignClient.getConsultant(CONSULTANT_ID)).thenReturn(consultant);
+
+		RuntimeException ex = assertThrows(RuntimeException.class, () -> service.saveInvoice(request));
+		assertFalse(ex instanceof NullPointerException, "a missing tenant must be a refusal, not a crash");
+		assertTrue(ex.getMessage().contains("consultant"), ex.getMessage());
+		verify(invoiceRepository, never()).save(any(ManualInvoice.class));
+	}
+
+	@Test
+	void saveInvoice_stampsTheCallersTenant() {
+		ManualInvoice request = buildCreateRequest();
+		when(invoiceRepository.existsByPoNumberAndConsultantIdNot(any(), any())).thenReturn(false);
+		when(consultantFeignClient.getConsultant(CONSULTANT_ID)).thenReturn(buildConsultant());
+		when(vendorFeignClient.searchVendors("Acme Corp")).thenReturn(List.of(buildVendor()));
+		when(invoiceRepository.save(any(ManualInvoice.class))).thenAnswer(inv -> {
+			ManualInvoice arg = inv.getArgument(0);
+			if (arg.getId() == null) arg.setId(1L);
+			return arg;
+		});
+
+		ManualInvoice result = service.saveInvoice(request);
+		assertEquals(ADMIN_ID, result.getAdminId());
+	}
+
+	// =========================================================
 	// 2. saveInvoice_update_unauthorized
 	// =========================================================
 
