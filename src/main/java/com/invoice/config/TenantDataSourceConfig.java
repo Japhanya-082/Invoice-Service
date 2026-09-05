@@ -15,6 +15,13 @@ import java.util.HashMap;
 @Configuration
 public class TenantDataSourceConfig {
 
+	// Defaults to true: a request whose tenant cannot be resolved is refused
+	// rather than served from the shared default pool (G-57). Set
+	// tenant.require-tenant=false only to restore the old fail-open behaviour
+	// during an incident -- it re-exposes other tenants' invoices.
+	@Value("${tenant.require-tenant:true}")
+	private boolean requireTenant;
+
 	@Value("${spring.datasource.url}")
 	private String jdbcUrl;
 
@@ -52,7 +59,7 @@ public class TenantDataSourceConfig {
 	public DataSource dataSource() {
 		DataSource defaultDs = rawDataSource();
 
-		TenantRoutingDataSource router = new TenantRoutingDataSource(jdbcUrl, username, password, "com.invoice.entity");
+		TenantRoutingDataSource router = new TenantRoutingDataSource(jdbcUrl, username, password, "com.invoice.entity", requireTenant);
 		router.setDefaultTargetDataSource(defaultDs);
 		router.setTargetDataSources(new HashMap<>());
 		router.afterPropertiesSet();

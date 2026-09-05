@@ -53,6 +53,9 @@ class JwtSecurityHardeningTest {
         ReflectionTestUtils.setField(filter, "jwtAudience", AUDIENCE);
         ReflectionTestUtils.setField(filter, "jwtClockSkewSeconds", 30L);
         ReflectionTestUtils.setField(filter, "internalApiKey", "");
+        // Production default. Without it the field is a bare false and the
+        // happy-path test below passes against fail-open routing (G-57).
+        ReflectionTestUtils.setField(filter, "requireTenant", true);
     }
 
     @AfterEach
@@ -69,7 +72,9 @@ class JwtSecurityHardeningTest {
 
     private static String token(String secret, String iss, String aud, long ttlMillis) {
         return Jwts.builder()
-                .setClaims(Map.of("adminId", 42, "roles", List.of("USER")))
+                // companyDomain makes this a resolvable tenant token; without it the
+                // G-57 filter refuses with 503 before authentication is observable.
+                .setClaims(Map.of("adminId", 42, "companyDomain", "acme", "roles", List.of("USER")))
                 .setSubject("user@example.com")
                 .setIssuer(iss)
                 .setAudience(aud)
