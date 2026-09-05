@@ -35,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.invoice.DTO.ConsultantDTO;
 import com.invoice.DTO.InvoiceSortingRequestDTO;
 import com.invoice.DTO.VendorDTO;
+import com.invoice.DTO.VendorEnvelope;
 import com.invoice.client.ConsultantFeignClient;
 import com.invoice.client.VendorFeignClient;
 import com.invoice.entity.InvoiceItem;
@@ -201,13 +202,12 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		invoice.setTotal(request.getTotal());
 		invoice.setTotalHours(request.getTotalHours());
 		// ===== Vendor Lookup =====
-		if (request.getCustomer() != null && !request.getCustomer().isBlank()) {
+		if (request.getCustomerVendorId() != null
+				|| (request.getCustomer() != null && !request.getCustomer().isBlank())) {
 
-			List<VendorDTO> vendors = vendorFeignClient.searchVendors(request.getCustomer());
+			VendorDTO vendor = resolveVendor(request.getCustomerVendorId(), request.getCustomer());
 
-			if (!vendors.isEmpty()) {
-
-				VendorDTO vendor = vendors.get(0);
+			if (vendor != null) {
 
 				invoice.setCustomerVendorId(vendor.getVendorId());
 				invoice.setCustomer(vendor.getVendorName());
@@ -447,7 +447,8 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 
 			if (existingInvoice.getCustomerVendorId() != null) {
 				try {
-					VendorDTO vendor = vendorFeignClient.getVendorById(existingInvoice.getCustomerVendorId());
+					VendorEnvelope envelope = vendorFeignClient.getVendorById(existingInvoice.getCustomerVendorId());
+					VendorDTO vendor = envelope != null ? envelope.getData() : null;
 
 					if (vendor != null) {
 						existingInvoice.setCustomer(vendor.getVendorName());
@@ -611,6 +612,61 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 		return ALLOWED_DB_STATUSES.contains(normalized) ? normalized : (fallback != null ? fallback : "PENDING");
 	}
 
+	/**
+	 * The vendor an invoice belongs to, resolved by id in preference to name.
+	 *
+	 * <p>Both save and update used to resolve it as
+	 * {@code searchVendors(customer).get(0)}. That call is a LIKE search
+	 * (`findByVendorNameContainingIgnoreCaseAndAdminId`), tenant-scoped and
+	 * sorted exact-first, so it picked the right vendor while the stored name
+	 * still matched one. When it did not — a renamed or deleted vendor — it had
+	 * two bad outcomes, both reproduced against a running stack:
+	 *
+	 * <ul>
+	 *   <li>nothing contained the stored name: the update threw
+	 *       {@code Vendor not found for customer}, so the invoice could not be
+	 *       settled at all;</li>
+	 *   <li>something else contained it — "Acme" against a surviving
+	 *       "Acme Holdings" — and the settlement silently adopted that vendor.
+	 *       Because the update then takes {@code vendorType} from the vendor,
+	 *       and the entity normalises status into the matching AR/AP family, a
+	 *       payable invoice paid through the Payments screen was stored as a
+	 *       <em>receivable</em> marked RECEIVED. HTTP 200, no warning.</li>
+	 * </ul>
+	 *
+	 * <p>The invoice already carries {@code customerVendorId}, a foreign key
+	 * that cannot drift when a name changes, so that is what is used. The name
+	 * remains a fallback for rows written before the column was populated, but
+	 * it now requires an <strong>exact</strong> match: a LIKE hit that is not
+	 * the vendor named is not evidence of anything, and silently substituting
+	 * one is worse than refusing.
+	 *
+	 * <p>Both paths stay inside the caller's tenant: the by-id endpoint is
+	 * scoped in Customer-Service and the by-name search carries the admin id.
+	 *
+	 * @return the vendor, or {@code null} when there is nothing to resolve from
+	 */
+	private VendorDTO resolveVendor(Long vendorId, String customerName) {
+		if (vendorId != null) {
+			VendorEnvelope envelope = vendorFeignClient.getVendorById(vendorId);
+			VendorDTO vendor = envelope != null ? envelope.getData() : null;
+			if (vendor == null || vendor.getVendorId() == null) {
+				throw new RuntimeException("Vendor not found for id: " + vendorId);
+			}
+			return vendor;
+		}
+
+		if (customerName == null || customerName.isBlank()) {
+			return null;
+		}
+
+		String wanted = customerName.trim();
+		return vendorFeignClient.searchVendors(wanted).stream()
+				.filter(v -> v.getVendorName() != null && wanted.equalsIgnoreCase(v.getVendorName().trim()))
+				.findFirst()
+				.orElseThrow(() -> new RuntimeException("Vendor not found for customer: " + customerName));
+	}
+
 	@Override
 	@Transactional
 	public ManualInvoice updateManualInvoice(Long id, ManualInvoice request) {
@@ -684,13 +740,12 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 			}
 		}
 
-		if (request.getCustomer() != null && !request.getCustomer().isBlank()) {
+		if (request.getCustomerVendorId() != null
+				|| (request.getCustomer() != null && !request.getCustomer().isBlank())) {
 
-			List<VendorDTO> vendors = vendorFeignClient.searchVendors(request.getCustomer());
+			VendorDTO vendor = resolveVendor(request.getCustomerVendorId(), request.getCustomer());
 
-			if (!vendors.isEmpty()) {
-
-				VendorDTO vendor = vendors.get(0);
+			if (vendor != null) {
 
 				invoice.setCustomerVendorId(vendor.getVendorId());
 				invoice.setVendorType(vendor.getVendorType());
