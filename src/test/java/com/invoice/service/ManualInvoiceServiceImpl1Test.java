@@ -44,6 +44,8 @@ class ManualInvoiceServiceImpl1Test {
 
 	@Mock
 	private InvoiceEmailService invoiceEmailService;
+	@Mock
+	private com.invoice.repository.ManageUserRepository manageUserRepository;
 
 	@InjectMocks
 	private ManualInvoiceServiceImpl1 service;
@@ -180,6 +182,26 @@ class ManualInvoiceServiceImpl1Test {
 
 		ManualInvoice result = service.saveInvoice(request);
 		assertEquals(ADMIN_ID, result.getAdminId());
+	}
+
+	// =========================================================
+	// A failed send must not mark the invoice PENDING.
+	// =========================================================
+	@Test
+	void sendInvoiceMails_transportFailure_keepsTheDraftAndReports() {
+		ManualInvoice invoice = buildSavedInvoice(5L);
+		invoice.setStatus("DRAFT");
+		invoice.setCustomerEmail("ap@example.com");
+		when(invoiceRepository.findByInvoiceNumberAndAdminId("INV-260010001", ADMIN_ID)).thenReturn(java.util.Optional.of(invoice));
+		when(manageUserRepository.findAdminAndHrByAdminId(ADMIN_ID)).thenReturn(java.util.Collections.emptyList());
+		doThrow(new IllegalStateException("The invoice mail could not be sent: Authentication failed"))
+				.when(invoiceEmailService).sendInvoiceMail(anyList(), any(ManualInvoice.class), anyList());
+
+		RuntimeException ex = assertThrows(RuntimeException.class,
+				() -> service.sendInvoiceMails("INV-260010001", ADMIN_ID));
+		assertTrue(ex.getMessage().contains("could not be sent"), ex.getMessage());
+		assertEquals("DRAFT", invoice.getStatus());
+		verify(invoiceRepository, never()).save(any(ManualInvoice.class));
 	}
 
 	// =========================================================
