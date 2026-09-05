@@ -39,9 +39,12 @@ class SchemaProvisioningRuntimeAuthzTest {
     @Autowired
     private MockMvc mockMvc;
 
+    // companyDomain is present so the token is a realistic, resolvable tenant
+    // token: without it the G-57 fail-closed filter refuses with 503 before
+    // authorization runs, and these tests are about the 403 authz refusal.
     private static String userToken(List<String> roles) {
         return Jwts.builder()
-                .setClaims(Map.of("adminId", 42, "roles", roles))
+                .setClaims(Map.of("adminId", 42, "companyDomain", "acme", "roles", roles))
                 .setSubject("user@example.com")
                 .setIssuer("invoice-login")
                 .setAudience("invoice-platform")

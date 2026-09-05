@@ -21,13 +21,21 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
 	private final String username;
 	private final String password;
 	private final String entityPackage;
+	/** When true (the default), a request whose tenant cannot be resolved is refused rather than served from the default pool. */
+	private final boolean requireTenant;
 	private final ConcurrentHashMap<String, DataSource> tenantDataSources = new ConcurrentHashMap<>();
 
 	public TenantRoutingDataSource(String baseJdbcUrl, String username, String password, String entityPackage) {
+		this(baseJdbcUrl, username, password, entityPackage, true);
+	}
+
+	public TenantRoutingDataSource(String baseJdbcUrl, String username, String password, String entityPackage,
+			boolean requireTenant) {
 		this.baseJdbcUrl = baseJdbcUrl;
 		this.username = username;
 		this.password = password;
 		this.entityPackage = entityPackage;
+		this.requireTenant = requireTenant;
 	}
 
 	
@@ -37,10 +45,41 @@ public class TenantRoutingDataSource extends AbstractRoutingDataSource {
 	}
 
 	
+	/**
+	 * Resolves the datasource for the current request, refusing rather than
+	 * guessing.
+	 *
+	 * <p>This method used to read {@code if (tenant == null) return
+	 * getResolvedDefaultDataSource();} — failing <em>open</em> (G-57). A token
+	 * with no {@code companyDomain} claim left the tenant unresolved, so every
+	 * such request was served from the shared {@code invoice} pool; and because
+	 * the {@code invoice} table has no {@code admin_id} column, {@code findAll()}
+	 * then returned every tenant's rows with nothing in the logs.
+	 *
+	 * <p>The distinction that makes failing closed possible is
+	 * {@link TenantContext#isTenantRequiredButUnresolved()}, set only by the
+	 * filter and only for a request that authenticated as a tenant user without a
+	 * resolvable schema. Everything else — startup dialect detection, health
+	 * probes, internal service calls with no tenant — is unmarked and still
+	 * reaches the default datasource.
+	 */
 	@Override
 	protected DataSource determineTargetDataSource() {
 		String tenant = TenantContext.getCurrentTenant();
+
 		if (tenant == null) {
+			if (requireTenant && TenantContext.isTenantRequiredButUnresolved()) {
+				log.error("Refusing a request with no resolvable tenant (adminId={}). The token "
+						+ "carries no companyDomain claim, so no schema can be selected; serving it "
+						+ "from the default datasource would expose other tenants' invoices.",
+						TenantContext.getCurrentAdminId());
+				throw new TenantNotResolvedException("No tenant is associated with this request.");
+			}
+			if (TenantContext.isTenantRequiredButUnresolved()) {
+				log.warn("Serving a request with no resolvable tenant (adminId={}) from the DEFAULT "
+						+ "datasource because tenant.require-tenant=false. Other tenants' invoices are "
+						+ "reachable in this mode.", TenantContext.getCurrentAdminId());
+			}
 			return getResolvedDefaultDataSource();
 		}
 		if (!tenantDataSources.containsKey(tenant) && tenantDataSources.size() >= MAX_TENANT_DATASOURCES) {

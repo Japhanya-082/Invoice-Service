@@ -62,6 +62,12 @@ public class TenantFilter extends OncePerRequestFilter {
 	@Value("${internal.api-key:}")
 	private String internalApiKey;
 
+	// Defaults to true: a token that authenticated as a tenant user but carries
+	// no companyDomain is refused here rather than reaching the fail-open router
+	// (G-57). Matches Customer-Service.
+	@Value("${tenant.require-tenant:true}")
+	private boolean requireTenant;
+
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
 			throws IOException, ServletException {
@@ -97,6 +103,21 @@ public class TenantFilter extends OncePerRequestFilter {
 			log.warn("Rejected request to {} — invalid JWT: {}", path, e.getMessage());
 		}
 
+		// Fail closed: a tenant user with no resolvable schema is refused here,
+		// before the request reaches the router (G-57). Belt-and-suspenders with
+		// TenantRoutingDataSource, which also refuses — this just gives a clean
+		// 503 instead of a 500 from a thrown TenantNotResolvedException.
+		if (requireTenant && TenantContext.isTenantRequiredButUnresolved()) {
+			log.error("Refusing {} — authenticated as adminId={} but the token carries no "
+					+ "companyDomain, so no tenant schema can be selected. Serving it from the "
+					+ "default datasource would expose other tenants' invoices.",
+					path, TenantContext.getCurrentAdminId());
+			TenantContext.clear();
+			SecurityContextHolder.clearContext();
+			writeTenantUnavailable(response);
+			return;
+		}
+
 		try {
 			chain.doFilter(request, response);
 		} finally {
@@ -122,7 +143,8 @@ public class TenantFilter extends OncePerRequestFilter {
 		// Set tenant from companyDomain first — needed for DB schema routing
 		// even if adminId is absent (e.g. service-to-service tokens).
 		String companyDomain = (String) claims.get("companyDomain");
-		if (StringUtils.hasText(companyDomain)) {
+		boolean tenantResolved = StringUtils.hasText(companyDomain);
+		if (tenantResolved) {
 			TenantContext.setCurrentTenant(TenantContext.toSchemaName(companyDomain));
 		}
 
@@ -132,6 +154,14 @@ public class TenantFilter extends OncePerRequestFilter {
 			return;
 		}
 		TenantContext.setCurrentAdminId(adminId);
+
+		if (!tenantResolved) {
+			// Authenticated as a tenant user, but no schema can be selected.
+			// Previously this fell through and the router served the request from
+			// the shared default pool (G-57) — and the invoice table has no
+			// admin_id column, so findAll() then returned every tenant's rows.
+			TenantContext.markTenantRequiredButUnresolved();
+		}
 
 		Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
 		Object roles = claims.get("roles");
@@ -195,6 +225,14 @@ public class TenantFilter extends OncePerRequestFilter {
 		} catch (NumberFormatException e) {
 			return null;
 		}
+	}
+
+	private void writeTenantUnavailable(HttpServletResponse response) throws IOException {
+		response.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+		response.setContentType("application/json");
+		response.getWriter().write("{\"status\":\"FAIL\",\"message\":\"This session is not "
+				+ "associated with a company. Sign in again; if it persists, contact your "
+				+ "administrator.\"}");
 	}
 
 	private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
