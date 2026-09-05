@@ -26,6 +26,13 @@ public class InvoiceEmailService {
 
 	public void sendInvoiceMail(List<String> toMail, ManualInvoice invoice, List<String> ccEmails) {
 
+		// A message with no recipients is not a message; refuse before building
+		// one, rather than discovering it at the relay (or, with some helpers,
+		// not at all).
+		if (toMail == null || toMail.stream().allMatch(m -> m == null || m.isBlank())) {
+			throw new IllegalStateException("The invoice mail has no recipients.");
+		}
+
 		try {
 
 			MimeMessage message = mailSender.createMimeMessage();
@@ -107,7 +114,12 @@ public class InvoiceEmailService {
 			log.info("Invoice mail sent successfully to: {}", toMail);
 
 		} catch (Exception e) {
+			// Logged AND rethrown. This used to swallow the failure, and the caller
+			// then marked the invoice PENDING and answered success -- an invoice
+			// nobody received, recorded as sent. The caller decides what a failed
+			// send means for the invoice; this method only knows it failed.
 			log.error("Failed to send invoice mail to {}: {}", toMail, e.getMessage(), e);
+			throw new IllegalStateException("The invoice mail could not be sent: " + e.getMessage(), e);
 		}
 	}
 }

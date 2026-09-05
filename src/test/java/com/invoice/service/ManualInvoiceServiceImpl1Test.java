@@ -44,6 +44,8 @@ class ManualInvoiceServiceImpl1Test {
 
 	@Mock
 	private InvoiceEmailService invoiceEmailService;
+	@Mock
+	private com.invoice.repository.ManageUserRepository manageUserRepository;
 
 	@InjectMocks
 	private ManualInvoiceServiceImpl1 service;
@@ -148,6 +150,58 @@ class ManualInvoiceServiceImpl1Test {
 		// Invoice number should have been set to INV-YY<consultantId><invoiceId>
 		assertTrue(result.getInvoiceNumber().startsWith("INV-"));
 		verify(invoiceRepository, atLeastOnce()).save(any(ManualInvoice.class));
+	}
+
+	// =========================================================
+	// E-5: the sibling answers without the consultant's tenant.
+	// =========================================================
+	@Test
+	void saveInvoice_consultantWithoutTenant_isRefusedNotNpe() {
+		ManualInvoice request = buildCreateRequest();
+		ConsultantDTO consultant = buildConsultant();
+		consultant.setAdminId(null);
+		when(consultantFeignClient.getConsultant(CONSULTANT_ID)).thenReturn(consultant);
+
+		RuntimeException ex = assertThrows(RuntimeException.class, () -> service.saveInvoice(request));
+		assertFalse(ex instanceof NullPointerException, "a missing tenant must be a refusal, not a crash");
+		assertTrue(ex.getMessage().contains("consultant"), ex.getMessage());
+		verify(invoiceRepository, never()).save(any(ManualInvoice.class));
+	}
+
+	@Test
+	void saveInvoice_stampsTheCallersTenant() {
+		ManualInvoice request = buildCreateRequest();
+		when(invoiceRepository.existsByPoNumberAndConsultantIdNot(any(), any())).thenReturn(false);
+		when(consultantFeignClient.getConsultant(CONSULTANT_ID)).thenReturn(buildConsultant());
+		when(vendorFeignClient.searchVendors("Acme Corp")).thenReturn(List.of(buildVendor()));
+		when(invoiceRepository.save(any(ManualInvoice.class))).thenAnswer(inv -> {
+			ManualInvoice arg = inv.getArgument(0);
+			if (arg.getId() == null) arg.setId(1L);
+			return arg;
+		});
+
+		ManualInvoice result = service.saveInvoice(request);
+		assertEquals(ADMIN_ID, result.getAdminId());
+	}
+
+	// =========================================================
+	// A failed send must not mark the invoice PENDING.
+	// =========================================================
+	@Test
+	void sendInvoiceMails_transportFailure_keepsTheDraftAndReports() {
+		ManualInvoice invoice = buildSavedInvoice(5L);
+		invoice.setStatus("DRAFT");
+		invoice.setCustomerEmail("ap@example.com");
+		when(invoiceRepository.findByInvoiceNumberAndAdminId("INV-260010001", ADMIN_ID)).thenReturn(java.util.Optional.of(invoice));
+		when(manageUserRepository.findAdminAndHrByAdminId(ADMIN_ID)).thenReturn(java.util.Collections.emptyList());
+		doThrow(new IllegalStateException("The invoice mail could not be sent: Authentication failed"))
+				.when(invoiceEmailService).sendInvoiceMail(anyList(), any(ManualInvoice.class), anyList());
+
+		RuntimeException ex = assertThrows(RuntimeException.class,
+				() -> service.sendInvoiceMails("INV-260010001", ADMIN_ID));
+		assertTrue(ex.getMessage().contains("could not be sent"), ex.getMessage());
+		assertEquals("DRAFT", invoice.getStatus());
+		verify(invoiceRepository, never()).save(any(ManualInvoice.class));
 	}
 
 	// =========================================================

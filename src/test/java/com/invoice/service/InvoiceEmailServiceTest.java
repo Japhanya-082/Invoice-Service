@@ -34,11 +34,9 @@ import static org.mockito.Mockito.*;
  * </ul>
  *
  * <p>
- * Tests 2, 3, and 4 (invalid-email / mixed-email / empty-list scenarios)
- * document the <em>current</em> behaviour: the service does not throw for bad
- * inputs; it swallows the exception internally. The tests are named to reflect
- * what <em>should</em> happen in a stricter implementation, and the assertions
- * verify the observed (current) contract so the suite still passes.
+ * A failure to build or send the message propagates. It used to be swallowed,
+ * and the caller then marked the invoice PENDING and reported success for a
+ * mail nobody received; the caller now decides what a failed send means.
  */
 @ExtendWith(MockitoExtension.class)
 class InvoiceEmailServiceTest {
@@ -108,11 +106,12 @@ class InvoiceEmailServiceTest {
 		when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
 
 		ManualInvoice invoice = buildInvoice();
-		// Deliberately malformed addresses — the current service swallows the error
+		// Deliberately malformed addresses; the helper's refusal reaches the caller
 		List<String> invalidEmails = List.of("not-an-email", "also@@bad");
 
-		// Should not propagate any exception under the current implementation
-		assertDoesNotThrow(() -> invoiceEmailService.sendInvoiceMail(invalidEmails, invoice, Collections.emptyList()));
+				assertThrows(IllegalStateException.class,
+				() -> invoiceEmailService.sendInvoiceMail(invalidEmails, invoice, Collections.emptyList()));
+		verify(mailSender, never()).send(mimeMessage);
 	}
 
 	// ------------------------------------------------------------------
@@ -132,8 +131,10 @@ class InvoiceEmailServiceTest {
 		ManualInvoice invoice = buildInvoice();
 		List<String> mixed = List.of("valid@example.com", "invalid@@bad");
 
-		// Service is expected not to throw (it swallows exceptions)
-		assertDoesNotThrow(() -> invoiceEmailService.sendInvoiceMail(mixed, invoice, Collections.emptyList()));
+		// One malformed address fails the whole message; nothing is sent to anyone
+		assertThrows(IllegalStateException.class,
+				() -> invoiceEmailService.sendInvoiceMail(mixed, invoice, Collections.emptyList()));
+		verify(mailSender, never()).send(mimeMessage);
 		// createMimeMessage should always be called
 		verify(mailSender, atLeastOnce()).createMimeMessage();
 	}
@@ -148,12 +149,31 @@ class InvoiceEmailServiceTest {
 
 	@Test
 	void sendInvoiceMail_emptyList_noSend() {
-		MimeMessage mimeMessage = mockMimeMessage();
-		when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+		// Refused before a message is even built, so createMimeMessage is not stubbed.
 
 		ManualInvoice invoice = buildInvoice();
 
 		// The service does not validate for empty lists before calling the helper
-		assertDoesNotThrow(() -> invoiceEmailService.sendInvoiceMail(Collections.emptyList(), invoice, Collections.emptyList()));
+		assertThrows(IllegalStateException.class,
+				() -> invoiceEmailService.sendInvoiceMail(Collections.emptyList(), invoice, Collections.emptyList()));
+		verify(mailSender, never()).createMimeMessage();
+	}
+
+	// ------------------------------------------------------------------
+	// 5. A transport failure (wrong relay credentials, relay down) propagates.
+	// This is the case the local stack hit: 535 from the SMTP sink, logged,
+	// swallowed, and the invoice marked PENDING anyway.
+	// ------------------------------------------------------------------
+	@Test
+	void sendInvoiceMail_transportFailure_propagates() {
+		MimeMessage mimeMessage = mockMimeMessage();
+		when(mailSender.createMimeMessage()).thenReturn(mimeMessage);
+		doThrow(new org.springframework.mail.MailAuthenticationException("Authentication failed"))
+				.when(mailSender).send(mimeMessage);
+		ManualInvoice invoice = buildInvoice();
+
+		IllegalStateException ex = assertThrows(IllegalStateException.class,
+				() -> invoiceEmailService.sendInvoiceMail(List.of("alice@example.com"), invoice, Collections.emptyList()));
+		assertTrue(ex.getMessage().contains("could not be sent"), ex.getMessage());
 	}
 }

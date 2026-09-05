@@ -131,13 +131,21 @@ public class ManualInvoiceServiceImpl1 implements ManualInvoiceService1 {
 					throw new RuntimeException("Consultant not found with id: " + request.getConsultantId());
 				}
 
+				// Fail closed, not with a NullPointerException: when Customer-Service
+				// answers without the consultant's tenant, the comparison below
+				// cannot be made, and the old code then stamped the invoice with a
+				// null adminId -- an invoice owned by nobody (E-5).
+				if (consultant.getAdminId() == null) {
+					throw new RuntimeException("Unable to verify the consultant's company. Please try again.");
+				}
 				if (request.getAdminId() != null && !consultant.getAdminId().equals(request.getAdminId())) {
 					throw new RuntimeException("Unauthorized consultant access");
 				}
 
 				invoice.setConsultantId(consultant.getId());
 				invoice.setConsultantName(consultant.getFullName());
-				invoice.setAdminId(consultant.getAdminId());
+				// The caller's tenant, from the token; the consultant's is only ever confirmed equal.
+				invoice.setAdminId(request.getAdminId() != null ? request.getAdminId() : consultant.getAdminId());
 
 			} catch (feign.FeignException.Unauthorized e) {
 
