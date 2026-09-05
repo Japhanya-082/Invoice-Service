@@ -268,6 +268,14 @@ public class ManualInvoiceController1 {
 			responseData.put("fileDownloadUrls", fileUrls);
 
 			return ResponseEntity.ok(new RestAPIResponse("Success", "Invoice Retrieved Successfully", responseData));
+		} catch (RuntimeException e) {
+			if (isNotFound(e)) {
+				// Missing and foreign are the same answer on purpose (findByIdAndAdminId).
+				return ResponseEntity.status(HttpStatus.NOT_FOUND)
+						.body(new RestAPIResponse("Error", "Invoice not found", null));
+			}
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new RestAPIResponse("Error", "Failed to retrieve invoice: " + e.getMessage(), null));
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new RestAPIResponse("Error", "Failed to retrieve invoice: " + e.getMessage(), null));
@@ -419,7 +427,17 @@ public class ManualInvoiceController1 {
 			ManualInvoice updatedInvoice = serviceImpl1.updateManualInvoice(id, invoice);
 			return ResponseEntity.ok(new RestAPIResponse("Success", "Invoice updated successfully", updatedInvoice));
 		} catch (RuntimeException e) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new RestAPIResponse("Error", e.getMessage(), null));
+			// Two refusals used to share one status. A PO number already in use is a
+			// conflict with the user's input (409, and the message is for them); a
+			// missing or foreign invoice is 404. Reporting the conflict as 404 told
+			// the user the invoice had been removed when it had not.
+			if (isPoConflict(e)) {
+				return ResponseEntity.status(HttpStatus.CONFLICT).body(new RestAPIResponse("Error", e.getMessage(), null));
+			}
+			if (isNotFound(e)) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new RestAPIResponse("Error", "Invoice not found", null));
+			}
+			return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new RestAPIResponse("Error", e.getMessage(), null));
 		} catch (Exception e) {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body(new RestAPIResponse("Error", "Failed to update invoice: " + e.getMessage(), null));
@@ -462,6 +480,13 @@ public class ManualInvoiceController1 {
 
 			return ResponseEntity.ok(new RestAPIResponse("Success", "Invoice Deleted Successfully", null));
 
+		} catch (RuntimeException e) {
+			if (isNotFound(e)) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND)
+						.body(new RestAPIResponse("Error", "Invoice not found", null));
+			}
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body(new RestAPIResponse("Error", "Failed to delete invoice: " + e.getMessage(), null));
 		} catch (Exception e) {
 
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -742,4 +767,21 @@ public class ManualInvoiceController1 {
 	private java.math.BigDecimal safe(java.math.BigDecimal v) { return v != null ? v : java.math.BigDecimal.ZERO; }
 	private Long safe(Long v) { return v != null ? v : 0L; }
 
+
+	/**
+	 * The service signals "no such invoice for this tenant" with a
+	 * RuntimeException whose message starts "Invoice not found" (both
+	 * {@code findByIdAndAdminId} lookups). Matched on the message because the
+	 * service has no exception hierarchy; the two message forms are its own.
+	 */
+	private static boolean isNotFound(RuntimeException e) {
+		String m = e.getMessage();
+		return m != null && m.startsWith("Invoice not found");
+	}
+
+	/** The service's two PO-number refusals: "already used by another consultant" and "already exists". */
+	private static boolean isPoConflict(RuntimeException e) {
+		String m = e.getMessage();
+		return m != null && m.startsWith("PO Number already");
+	}
 }

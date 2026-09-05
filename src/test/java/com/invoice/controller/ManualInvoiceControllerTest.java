@@ -142,4 +142,39 @@ class ManualInvoiceControllerTest {
 				.content(objectMapper.writeValueAsString(payload))).andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.status").value("Error"));
 	}
+
+	// =========================================================
+	// Status codes the React screen decides on (parity bar item 8).
+	// =========================================================
+
+	@Test
+	void getInvoiceById_serviceNotFound_returns404_not500() throws Exception {
+		when(serviceImpl1.getInvoiceById(41L)).thenThrow(new RuntimeException("Invoice not found with id: 41"));
+		mockMvc.perform(get("/manual-invoice/41")).andExpect(status().isNotFound());
+	}
+
+	@Test
+	void updateManualInvoice_duplicatePo_returns409_withTheReason() throws Exception {
+		when(serviceImpl1.updateManualInvoice(org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.any()))
+				.thenThrow(new RuntimeException("PO Number already used by another consultant"));
+		mockMvc.perform(put("/manual-invoice/update/7").contentType(MediaType.APPLICATION_JSON)
+				.content("{\"poNumber\":\"PO12345678\"}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.message").value("PO Number already used by another consultant"));
+	}
+
+	@Test
+	void updateManualInvoice_missingOrForeign_returns404() throws Exception {
+		when(serviceImpl1.updateManualInvoice(org.mockito.ArgumentMatchers.eq(8L), org.mockito.ArgumentMatchers.any()))
+				.thenThrow(new RuntimeException("Invoice not found with id: 8"));
+		mockMvc.perform(put("/manual-invoice/update/8").contentType(MediaType.APPLICATION_JSON).content("{}"))
+				.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void deleteInvoice_missingOrForeign_returns404_not500() throws Exception {
+		org.mockito.Mockito.doThrow(new RuntimeException("Invoice not found or unauthorized"))
+				.when(serviceImpl1).deleteInvoice(9L, 1L);
+		mockMvc.perform(delete("/manual-invoice/9").param("adminId", "1")).andExpect(status().isNotFound());
+	}
 }
