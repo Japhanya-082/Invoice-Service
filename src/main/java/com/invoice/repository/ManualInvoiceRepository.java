@@ -196,7 +196,7 @@ public interface ManualInvoiceRepository
 	// ✅ CASE 2: vendorType + status + search
 	@Query("SELECT i FROM ManualInvoice i\r\n" + "    	    WHERE i.adminId = :adminId\r\n"
 			+ "    	    AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n"
-			+ "    	    AND LOWER(i.status) = LOWER(:status)\r\n" + "    	    AND (\r\n"
+			+ "    	    AND LOWER(REPLACE(i.status, '_', ' ')) = LOWER(REPLACE(:status, '_', ' '))\r\n" + "    	    AND (\r\n"
 			+ "    	        :search IS NULL OR :search = '' OR (\r\n"
 			+ "    	            LOWER(i.consultantName) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
 			+ "    	            OR LOWER(i.customer) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
@@ -225,12 +225,28 @@ public interface ManualInvoiceRepository
 	Page<ManualInvoice> searchInvoicesByAdminVendorTypeAndStatus(Long adminId, String vendorType, String status,
 			String search, Pageable pageable);
 
+	/**
+	 * Status filters compare {@code lower(replace(status,'_',' '))} on both sides.
+	 *
+	 * <p>The table holds two vocabularies: legacy rows in title case with spaces
+	 * ("Partially Received", 13 of them on UAT) and rows written since the status
+	 * normalisation in upper snake case ("PARTIALLY_RECEIVED"). Both front ends
+	 * send the snake form, so an exact case-insensitive match showed the AP and
+	 * AR "Partially ..." and "Excess ..." tabs as empty for every legacy row.
+	 * Equality after folding case and the separator matches both.
+	 */
 	// ✅ CASE 3: vendorType + status
-	Page<ManualInvoice> findByAdminIdAndVendorTypeAndStatusIgnoreCase(Long adminId, String vendorType, String status,
-			Pageable pageable);
+	@Query("SELECT i FROM ManualInvoice i WHERE i.adminId = :adminId "
+			+ "AND LOWER(i.vendorType) = LOWER(:vendorType) "
+			+ "AND LOWER(REPLACE(i.status, '_', ' ')) = LOWER(REPLACE(:status, '_', ' '))")
+	Page<ManualInvoice> findByAdminIdAndVendorTypeAndStatusIgnoreCase(@Param("adminId") Long adminId,
+			@Param("vendorType") String vendorType, @Param("status") String status, Pageable pageable);
 
 	// ✅ CASE 5: status only
-	Page<ManualInvoice> findByAdminIdAndStatusIgnoreCase(Long adminId, String status, Pageable pageable);
+	@Query("SELECT i FROM ManualInvoice i WHERE i.adminId = :adminId "
+			+ "AND LOWER(REPLACE(i.status, '_', ' ')) = LOWER(REPLACE(:status, '_', ' '))")
+	Page<ManualInvoice> findByAdminIdAndStatusIgnoreCase(@Param("adminId") Long adminId, @Param("status") String status,
+			Pageable pageable);
 
 	// ✅ CASE 6: search only
 	@Query("  SELECT i FROM ManualInvoice i\r\n" + "			    WHERE i.adminId = :adminId\r\n"
@@ -243,7 +259,7 @@ public interface ManualInvoiceRepository
 
 	// Receivable
 	@Query("SELECT i FROM ManualInvoice i\r\n" + "    WHERE i.adminId = :adminId\r\n"
-			+ "    AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n" + "    AND LOWER(i.status) = LOWER(:status)\r\n"
+			+ "    AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n" + "    AND LOWER(REPLACE(i.status, '_', ' ')) = LOWER(REPLACE(:status, '_', ' '))\r\n"
 			+ "    AND (\r\n" + "        :search IS NULL OR :search = '' OR (\r\n"
 			+ "            LOWER(i.consultantName) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
 			+ "            OR LOWER(i.customer) LIKE LOWER(CONCAT('%', :search, '%'))\r\n"
@@ -275,10 +291,10 @@ public interface ManualInvoiceRepository
 
 	@Query(value = "SELECT i FROM ManualInvoice i\r\n" + "			    WHERE i.adminId = :adminId\r\n"
 			+ "			    AND LOWER(i.vendorType) = LOWER(:vendorType)\r\n"
-			+ "			    AND LOWER(i.status) = LOWER(:status)")
+			+ "			    AND LOWER(REPLACE(i.status, '_', ' ')) = LOWER(REPLACE(:status, '_', ' '))")
 	Page<ManualInvoice> findReceivableByStatus(Long adminId, String vendorType, String status, Pageable pageable);
 
-	@Query("SELECT COUNT(i) FROM ManualInvoice i WHERE i.adminId = :adminId AND LOWER(i.vendorType) = LOWER(:vendorType) AND LOWER(i.status) = LOWER(:status) AND i.id < :invoiceId")
+	@Query("SELECT COUNT(i) FROM ManualInvoice i WHERE i.adminId = :adminId AND LOWER(i.vendorType) = LOWER(:vendorType) AND LOWER(REPLACE(i.status, '_', ' ')) = LOWER(REPLACE(:status, '_', ' ')) AND i.id < :invoiceId")
 	long countBeforeIdWithFilters(@Param("adminId") Long adminId, @Param("vendorType") String vendorType,
 			@Param("status") String status, @Param("invoiceId") Long invoiceId);
 
