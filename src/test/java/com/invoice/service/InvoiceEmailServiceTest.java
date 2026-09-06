@@ -49,7 +49,7 @@ class InvoiceEmailServiceTest {
 
 	@BeforeEach
 	void setUp() {
-		ReflectionTestUtils.setField(invoiceEmailService, "fromMail", "no-reply@narvee.com");
+		ReflectionTestUtils.setField(invoiceEmailService, "fromMail", "invoice@mytrustin.com");
 	}
 
 	// ------------------------------------------------------------------

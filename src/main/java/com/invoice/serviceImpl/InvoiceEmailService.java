@@ -98,7 +98,7 @@ public class InvoiceEmailService {
 
 					"<span style='font-size:11px;color:#cfd8dc;'>© 2026 All Rights Reserved</span><br><br>" +
 
-//					"<a href='mailto:no-reply@narvee.com' style='color:#4fc3f7;text-decoration:none;'>no-reply@narvee.com</a>" +
+//					"<a href='mailto:invoice@mytrustin.com' style='color:#4fc3f7;text-decoration:none;'>invoice@mytrustin.com</a>" +
 
 					"</td>" + "</tr>" +
 
